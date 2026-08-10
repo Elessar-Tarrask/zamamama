@@ -57,13 +57,18 @@ function assertAdmin(auth: { token?: Record<string, unknown> } | undefined): voi
   }
 }
 
-/** Ручная отправка из админ-панели. Ставит бота на паузу в этом чате. */
-export const adminSendMessage = onCall<{ phone: string; text: string }>(
+/**
+ * Ручная отправка из админ-панели. По умолчанию ставит бота на паузу в чате
+ * (перехват из «Диалогов»); pauseBot=false — ответ на вопрос из «Неотвеченных»,
+ * бот продолжает работать.
+ */
+export const adminSendMessage = onCall<{ phone: string; text: string; pauseBot?: boolean }>(
   { secrets: [WAZZUP_API_KEY] },
   async (req) => {
     assertAdmin(req.auth);
     const phone = String(req.data?.phone ?? "").replace(/\D/g, "");
     const text = String(req.data?.text ?? "").trim();
+    const pauseBot = req.data?.pauseBot !== false;
     if (!phone || !text) throw new HttpsError("invalid-argument", "Нужны phone и text");
 
     const settings = await store.getSettings();
@@ -82,11 +87,15 @@ export const adminSendMessage = onCall<{ phone: string; text: string }>(
       providerMessageId,
       dateTimeMs: Date.now(),
     });
-    await store.pauseConversation(
-      phone,
-      Date.now() + settings.pauseOnManualReplyHours * 3_600_000,
-      "Администратор ответил из панели — бот на паузе",
-    );
+    if (pauseBot) {
+      await store.pauseConversation(
+        phone,
+        Date.now() + settings.pauseOnManualReplyHours * 3_600_000,
+        "Администратор ответил из панели — бот на паузе",
+      );
+    } else {
+      await store.flagConversation(phone, "");
+    }
     return { ok: true };
   },
 );

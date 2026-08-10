@@ -69,10 +69,29 @@ export const toolDefinitions: ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "log_unanswered_question",
+      description:
+        "Вопрос клиента, ответа на который НЕТ в базе знаний: записать его для администратора " +
+        "и уведомить его. Бот продолжает работать в диалоге. После вызова скажи клиенту, что " +
+        "уточнишь у администратора и вернёшься с ответом, и предложи помочь с остальным.",
+      parameters: {
+        type: "object",
+        properties: {
+          clientQuestion: { type: "string", description: "Вопрос клиента, максимально дословно" },
+        },
+        required: ["clientQuestion"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "handoff_to_human",
       description:
-        "Передать диалог администратору: вопроса нет в базе знаний, клиент просит человека, " +
-        "жалоба или нестандартная ситуация. После вызова бот замолкает в этом диалоге.",
+        "Полностью передать диалог живому администратору — после вызова бот замолкает в этом чате. " +
+        "Вызывай ТОЛЬКО если клиент прямо просит человека, жалуется или ситуация конфликтная. " +
+        "Для обычного вопроса без ответа в базе используй log_unanswered_question.",
       parameters: {
         type: "object",
         properties: {
@@ -85,6 +104,21 @@ export const toolDefinitions: ChatCompletionTool[] = [
     },
   },
 ];
+
+/** Best-effort WhatsApp-алерт администратору (флаг в панели ставится всегда). */
+async function sendAdminAlert(ctx: ToolContext, text: string): Promise<void> {
+  if (!ctx.settings.adminAlertPhone) return;
+  try {
+    const crmMessageId = randomUUID();
+    await store.recordSentMessage(crmMessageId, ctx.settings.adminAlertPhone, true);
+    const { providerMessageId } = await ctx.provider.sendText(ctx.settings.adminAlertPhone, text, crmMessageId);
+    if (providerMessageId) {
+      await store.recordSentMessage(providerMessageId, ctx.settings.adminAlertPhone, true);
+    }
+  } catch (e) {
+    logger.warn("Не удалось отправить WhatsApp-алерт администратору", e);
+  }
+}
 
 /** Выполняет инструмент; всегда возвращает JSON-строку для роли tool. */
 export async function executeTool(name: string, argsJson: string, ctx: ToolContext): Promise<string> {
@@ -155,33 +189,37 @@ export async function executeTool(name: string, argsJson: string, ctx: ToolConte
         return JSON.stringify({ ok: true });
       }
 
+      case "log_unanswered_question": {
+        const clientQuestion = String(args.clientQuestion ?? "").trim();
+        if (!clientQuestion) return JSON.stringify({ error: "missing_question" });
+        await store.logUnanswered(ctx.phone, clientQuestion, "Нет ответа в базе знаний");
+        await store.flagConversation(ctx.phone, `Ждёт ответа админа: ${clientQuestion.slice(0, 80)}`);
+        await sendAdminAlert(
+          ctx,
+          `❓ Вопрос без ответа\nОт: +${ctx.phone} (wa.me/${ctx.phone})\nВопрос: ${clientQuestion}\n` +
+            "Ответьте из панели → «Неотвеченные»: сообщение уйдёт клиенту, бот продолжит работать.",
+        );
+        return JSON.stringify({
+          ok: true,
+          hint:
+            `Скажи клиенту дословно: «${ctx.settings.fallbackText}» — и предложи помочь с другими вопросами. ` +
+            "Ответ на сам вопрос НЕ выдумывай.",
+        });
+      }
+
       case "handoff_to_human": {
         const reason = String(args.reason ?? "не указана");
         const clientQuestion = String(args.clientQuestion ?? "");
         await store.setMode(ctx.phone, "human", `Handoff: ${reason}`);
         await store.logUnanswered(ctx.phone, clientQuestion || reason, reason);
-
-        // Алерт Дане в WhatsApp — best-effort: на тарифе Inbox дойдёт, только
-        // если диалог с её номером уже открыт (см. docs/SETUP.md). Флаг в
-        // панели ставится в любом случае.
-        if (ctx.settings.adminAlertPhone) {
-          try {
-            const crmMessageId = randomUUID();
-            await store.recordSentMessage(crmMessageId, ctx.settings.adminAlertPhone, true);
-            const { providerMessageId } = await ctx.provider.sendText(
-              ctx.settings.adminAlertPhone,
-              `⚠️ Клиенту нужен администратор!\nЧат: +${ctx.phone} (wa.me/${ctx.phone})\n` +
-                `Причина: ${reason}${clientQuestion ? `\nВопрос: ${clientQuestion}` : ""}\n` +
-                "Бот в этом диалоге поставлен на паузу.",
-              crmMessageId,
-            );
-            if (providerMessageId) {
-              await store.recordSentMessage(providerMessageId, ctx.settings.adminAlertPhone, true);
-            }
-          } catch (e) {
-            logger.warn("Не удалось отправить WhatsApp-алерт администратору", e);
-          }
-        }
+        // На тарифе Inbox алерт дойдёт, только если диалог с номером Даны
+        // уже открыт (см. docs/SETUP.md). Флаг в панели ставится всегда.
+        await sendAdminAlert(
+          ctx,
+          `⚠️ Клиенту нужен администратор!\nЧат: +${ctx.phone} (wa.me/${ctx.phone})\n` +
+            `Причина: ${reason}${clientQuestion ? `\nВопрос: ${clientQuestion}` : ""}\n` +
+            "Бот в этом диалоге поставлен на паузу.",
+        );
         return JSON.stringify({
           ok: true,
           hint: "Скажи клиенту, что администратор ответит прямо в этом чате в ближайшее время.",

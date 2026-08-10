@@ -24,6 +24,7 @@ describe("buildSystemPrompt", () => {
   it("содержит персону, жёсткие правила и скрипты", () => {
     expect(prompt).toContain(DEFAULT_SETTINGS.systemPrompt);
     expect(prompt).toContain("ПРАВИЛА ОБЩЕНИЯ");
+    expect(prompt).toContain("log_unanswered_question"); // мягкий сценарий «уточню и вернусь»
     expect(prompt).toContain(DEFAULT_SETTINGS.greetingScript);
     expect(prompt).toContain(DEFAULT_SETTINGS.agePitches["2"]);
     expect(prompt).toContain(DEFAULT_SETTINGS.agePitches["5"]);

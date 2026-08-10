@@ -1,9 +1,13 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "./firebase";
 
-/** Ручная отправка сообщения клиенту (бот встаёт на паузу в этом чате). */
-export async function adminSendMessage(phone: string, text: string): Promise<void> {
-  await httpsCallable(functions, "adminSendMessage")({ phone, text });
+/**
+ * Ручная отправка сообщения клиенту. pauseBot=true (перехват из «Диалогов») —
+ * бот встаёт на паузу; pauseBot=false (ответ из «Неотвеченных») — бот
+ * продолжает работать в этом чате.
+ */
+export async function adminSendMessage(phone: string, text: string, pauseBot = true): Promise<void> {
+  await httpsCallable(functions, "adminSendMessage")({ phone, text, pauseBot });
 }
 
 /** Переключить диалог: забрать человеку / вернуть боту (снимает паузу). */

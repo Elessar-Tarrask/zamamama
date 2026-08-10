@@ -21,10 +21,17 @@ const AZURE_OPENAI_API_KEY = defineSecret("AZURE_OPENAI_API_KEY");
 const GCAL_SA_KEY = defineSecret("GCAL_SA_KEY");
 const WEBHOOK_TOKEN = defineSecret("WEBHOOK_TOKEN");
 
-/** Приём вебхуков Wazzup. URL: .../wazzupWebhook?token=<WEBHOOK_TOKEN> */
-export const wazzupWebhook = onRequest({ secrets: [WEBHOOK_TOKEN] }, async (req, res) => {
-  await handleWazzupWebhook(req, res, WEBHOOK_TOKEN.value());
-});
+/**
+ * Приём вебхуков Wazzup. URL: .../wazzupWebhook?token=<WEBHOOK_TOKEN>
+ * minInstances: 1 держит функцию тёплой (~$4–6/мес) — без этого первое
+ * сообщение после простоя ждёт холодный старт (+10–20 секунд к ответу).
+ */
+export const wazzupWebhook = onRequest(
+  { secrets: [WEBHOOK_TOKEN], minInstances: 1 },
+  async (req, res) => {
+    await handleWazzupWebhook(req, res, WEBHOOK_TOKEN.value());
+  },
+);
 
 /** Отложенная обработка диалога (очередь Cloud Tasks, ставится вебхуком). */
 export const processConversation = onTaskDispatched<ProcessPayload>(
@@ -33,6 +40,7 @@ export const processConversation = onTaskDispatched<ProcessPayload>(
     retryConfig: { maxAttempts: 2, minBackoffSeconds: 30 },
     rateLimits: { maxConcurrentDispatches: 5 },
     timeoutSeconds: 120,
+    minInstances: 1, // тёплый инстанс против холодных стартов (~$4–6/мес)
   },
   async (req) => {
     await processConversationTask(req.data, {

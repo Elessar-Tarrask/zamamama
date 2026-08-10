@@ -59,6 +59,8 @@ export interface BotSettings {
   azureEndpoint: string;
   azureDeployment: string;
   azureApiVersion: string;
+  /** Глубина обдумывания gpt-5-mini: minimal — быстрее, medium — умнее. */
+  azureReasoningEffort: "minimal" | "low" | "medium";
 }
 
 export interface FaqItem {

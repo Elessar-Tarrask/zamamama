@@ -78,9 +78,9 @@ code { background: #e2e8f0; padding: 1px 5px; border-radius: 4px; font-size: 13p
 .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
 .field span { font-size: 13px; font-weight: 600; color: #334155; }
 .field small { color: #64748b; font-size: 12px; }
-.field input, .field textarea {
+.field input, .field textarea, .field select {
   padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px;
-  font-size: 14px; font-family: inherit; width: 100%;
+  font-size: 14px; font-family: inherit; width: 100%; background: #fff;
 }
 .field textarea { resize: vertical; line-height: 1.4; }
 .field-num input { max-width: 120px; }

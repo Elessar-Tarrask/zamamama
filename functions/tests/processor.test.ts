@@ -169,4 +169,28 @@ describe("processConversationTask", () => {
     await processConversationTask({ phone: "1", markerMs: 1000 }, secrets);
     expect(sendText).toHaveBeenCalledWith("1", DEFAULT_SETTINGS.fallbackText, expect.any(String));
   });
+
+  it("передаёт настроенную глубину обдумывания в запрос к модели", async () => {
+    await processConversationTask({ phone: "1", markerMs: 1000 }, secrets);
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({ reasoning_effort: DEFAULT_SETTINGS.azureReasoningEffort }),
+    );
+  });
+
+  it("длинный ответ уходит несколькими пузырями, лимит считает один ответ", async () => {
+    createMock.mockResolvedValue(
+      textCompletion(
+        "Первый содержательный абзац про группу и адаптацию.\n\nВторой абзац про цены и расписание занятий.",
+      ),
+    );
+    await processConversationTask({ phone: "77011234567", markerMs: 1000 }, secrets);
+    expect(sendText).toHaveBeenCalledTimes(2);
+    expect(sendText.mock.calls[0][1]).toContain("Первый");
+    expect(sendText.mock.calls[1][1]).toContain("Второй");
+    const outMessages = vi
+      .mocked(store.appendMessage)
+      .mock.calls.filter(([, m]) => (m as { direction: string }).direction === "out");
+    expect(outMessages).toHaveLength(2);
+    expect(store.recordBotReply).toHaveBeenCalledTimes(1);
+  });
 });

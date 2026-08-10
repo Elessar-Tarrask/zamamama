@@ -1,6 +1,7 @@
 import { logger } from "firebase-functions";
 import { randomUUID } from "node:crypto";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import type { ChatCompletionCreateParams, ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { interBubblePauseMs, sleep, splitIntoBubbles } from "./humanize";
 import { CalendarService } from "./calendar";
 import { HISTORY_LIMIT, MAX_LLM_ITERATIONS } from "./config";
 import { createLlmClient } from "./llm/client";
@@ -81,14 +82,17 @@ export async function processConversationTask(payload: ProcessPayload, secrets: 
       : null;
   const ctx: ToolContext = { phone, settings, calendar, provider };
 
+  const tLlmStart = Date.now();
+  let llmCalls = 0;
   let finalText = "";
   for (let i = 0; i < MAX_LLM_ITERATIONS; i++) {
+    llmCalls++;
     const completion = await client.chat.completions.create({
       model: settings.azureDeployment,
       messages: chat,
       tools: toolDefinitions,
       max_completion_tokens: 2000,
-      reasoning_effort: "low",
+      reasoning_effort: settings.azureReasoningEffort as ChatCompletionCreateParams["reasoning_effort"],
     });
     const message = completion.choices[0]?.message;
     if (!message) break;
@@ -109,24 +113,43 @@ export async function processConversationTask(payload: ProcessPayload, secrets: 
   // Модель промолчала (редко: исчерпаны итерации/фильтр) — честный fallback.
   if (!finalText) finalText = settings.fallbackText;
 
-  await sendBotReply(provider, phone, finalText);
+  const llmMs = Date.now() - tLlmStart;
+  const tSendStart = Date.now();
+  const bubbles = await sendBotReply(provider, phone, finalText);
+
+  // Разбивка задержки ответа — искать узкое место в Cloud Logging по "reply_timing".
+  logger.info("reply_timing", {
+    phone,
+    queueWaitMs: tLlmStart - markerMs, // пауза склейки + очередь + холодный старт
+    llmMs,
+    llmCalls,
+    sendMs: Date.now() - tSendStart,
+    totalMs: Date.now() - markerMs,
+    bubbles,
+  });
 }
 
-async function sendBotReply(provider: MessagingProvider, phone: string, text: string): Promise<void> {
-  const crmMessageId = randomUUID();
-  // Сначала регистрируем отправку, чтобы echo-вебхук распознал её как нашу.
-  await store.recordSentMessage(crmMessageId, phone, true);
-  const { providerMessageId } = await provider.sendText(phone, text, crmMessageId);
-  // Echo может прийти без crmMessageId — регистрируем и id провайдера.
-  if (providerMessageId) await store.recordSentMessage(providerMessageId, phone, true);
-  await store.appendMessage(phone, {
-    direction: "out",
-    byBot: true,
-    type: "text",
-    text,
-    crmMessageId,
-    providerMessageId,
-    dateTimeMs: Date.now(),
-  });
-  await store.recordBotReply(phone, Date.now());
+/** Отправляет ответ «пузырями» с паузой набора. Возвращает число пузырей. */
+async function sendBotReply(provider: MessagingProvider, phone: string, text: string): Promise<number> {
+  const bubbles = splitIntoBubbles(text);
+  for (let i = 0; i < bubbles.length; i++) {
+    if (i > 0) await sleep(interBubblePauseMs(bubbles[i]));
+    const crmMessageId = randomUUID();
+    // Сначала регистрируем отправку, чтобы echo-вебхук распознал её как нашу.
+    await store.recordSentMessage(crmMessageId, phone, true);
+    const { providerMessageId } = await provider.sendText(phone, bubbles[i], crmMessageId);
+    // Echo может прийти без crmMessageId — регистрируем и id провайдера.
+    if (providerMessageId) await store.recordSentMessage(providerMessageId, phone, true);
+    await store.appendMessage(phone, {
+      direction: "out",
+      byBot: true,
+      type: "text",
+      text: bubbles[i],
+      crmMessageId,
+      providerMessageId,
+      dateTimeMs: Date.now(),
+    });
+  }
+  await store.recordBotReply(phone, Date.now()); // один логический ответ для лимита
+  return bubbles.length;
 }

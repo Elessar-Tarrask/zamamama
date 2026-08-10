@@ -13,6 +13,7 @@ interface Draft {
   voiceFallbackText: string;
   replyDelaySeconds: number;
   replyDelayMaxSeconds: number;
+  azureReasoningEffort: string;
   adminAlertPhone: string;
   pauseOnManualReplyHours: number;
   maxBotMessagesPerHour: number;
@@ -36,6 +37,7 @@ const EMPTY: Draft = {
   voiceFallbackText: "",
   replyDelaySeconds: 5,
   replyDelayMaxSeconds: 12,
+  azureReasoningEffort: "minimal",
   adminAlertPhone: "",
   pauseOnManualReplyHours: 6,
   maxBotMessagesPerHour: 20,
@@ -154,6 +156,17 @@ export function Settings() {
       <div className="grid">
         <Num label="Пауза перед ответом, сек" value={draft.replyDelaySeconds} onChange={(v) => set({ replyDelaySeconds: v })} />
         <Num label="Пауза при незаконченной фразе, сек" value={draft.replyDelayMaxSeconds} onChange={(v) => set({ replyDelayMaxSeconds: v })} />
+        <label className="field field-num">
+          <span>Глубина обдумывания ИИ</span>
+          <select
+            value={draft.azureReasoningEffort}
+            onChange={(e) => set({ azureReasoningEffort: e.target.value })}
+          >
+            <option value="minimal">минимальная — быстрее всего</option>
+            <option value="low">низкая</option>
+            <option value="medium">средняя — медленнее, вдумчивее</option>
+          </select>
+        </label>
       </div>
 
       <h2>Передача администратору</h2>

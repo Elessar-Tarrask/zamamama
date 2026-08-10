@@ -84,9 +84,10 @@ export const DEFAULT_SETTINGS: BotSettings = {
   azureEndpoint: "https://test-ai-model-image-generator.openai.azure.com",
   azureDeployment: "gpt-5-mini",
   azureApiVersion: "2024-10-21",
-  // Замер на боевом промпте: minimal ≈ 2.2–3.0с и корректно зовёт инструменты;
-  // low ≈ 3.4–3.9с (+256 reasoning-токенов). См. scripts/latency.ts.
-  azureReasoningEffort: "minimal",
+  // Замер на боевом промпте с полным сводом правил (~3.2k токенов): minimal и
+  // low идут вровень по времени (~3–5с), но low надёжнее следует правилам и
+  // инструментам. См. scripts/latency.ts.
+  azureReasoningEffort: "low",
 };
 
 export interface SeedFaqItem {

@@ -1,7 +1,7 @@
 import { logger } from "firebase-functions";
 import { randomUUID } from "node:crypto";
 import type { ChatCompletionCreateParams, ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { interBubblePauseMs, sleep, splitIntoBubbles } from "./humanize";
+import { interBubblePauseMs, sanitizeForWhatsApp, sleep, splitIntoBubbles } from "./humanize";
 import { CalendarService } from "./calendar";
 import { HISTORY_LIMIT, MAX_LLM_ITERATIONS } from "./config";
 import { createLlmClient } from "./llm/client";
@@ -139,7 +139,7 @@ export async function processConversationTask(payload: ProcessPayload, secrets: 
 
 /** Отправляет ответ «пузырями» с паузой набора. Возвращает число пузырей. */
 async function sendBotReply(provider: MessagingProvider, phone: string, text: string): Promise<number> {
-  const bubbles = splitIntoBubbles(text);
+  const bubbles = splitIntoBubbles(sanitizeForWhatsApp(text));
   let sent = 0;
   for (let i = 0; i < bubbles.length; i++) {
     // Страховка от дублей: точно такой же текст уже уходил в последние

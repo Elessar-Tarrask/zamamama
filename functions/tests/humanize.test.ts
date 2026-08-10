@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { interBubblePauseMs, splitIntoBubbles } from "../src/humanize";
+import { interBubblePauseMs, sanitizeForWhatsApp, splitIntoBubbles } from "../src/humanize";
 
 describe("splitIntoBubbles", () => {
   it("один абзац — один пузырь", () => {
@@ -30,6 +30,42 @@ describe("splitIntoBubbles", () => {
 
   it("пустой текст — без пузырей", () => {
     expect(splitIntoBubbles("  \n\n  ")).toEqual([]);
+  });
+});
+
+describe("sanitizeForWhatsApp", () => {
+  it("переводит markdown-жирный в формат WhatsApp", () => {
+    expect(sanitizeForWhatsApp("Цена: **400 000 ₸** в месяц")).toBe("Цена: *400 000 ₸* в месяц");
+    expect(sanitizeForWhatsApp("__важно__")).toBe("*важно*");
+  });
+
+  it("убирает заголовки, бэктики и markdown-ссылки", () => {
+    expect(sanitizeForWhatsApp("## Группы\nToddler")).toBe("Группы\nToddler");
+    expect(sanitizeForWhatsApp("код `тут` был")).toBe("код тут был");
+    expect(sanitizeForWhatsApp("[сайт](https://a.kz)")).toBe("сайт: https://a.kz");
+  });
+
+  it("маркеры списков становятся «•», лишние пустые строки схлопываются", () => {
+    expect(sanitizeForWhatsApp("- один\n- два")).toBe("• один\n• два");
+    expect(sanitizeForWhatsApp("а\n\n\n\nб")).toBe("а\n\nб");
+  });
+
+  it("обычный текст не трогает", () => {
+    const t = "Здравствуйте! 😊 Полный день — 400 000 ₸/мес.";
+    expect(sanitizeForWhatsApp(t)).toBe(t);
+  });
+});
+
+describe("защита от «простыни»", () => {
+  it("кусок длиннее 1000 символов режется по границе предложения", () => {
+    const sentence = "Это осмысленное предложение о садике и занятиях детей. ";
+    const long = sentence.repeat(30); // ~1650 символов
+    const bubbles = splitIntoBubbles(long);
+    expect(bubbles.length).toBeGreaterThan(1);
+    for (const b of bubbles) {
+      expect(b.length).toBeLessThanOrEqual(1000);
+      expect(b.endsWith("детей.") || b.endsWith("занятиях") || b.length > 0).toBe(true);
+    }
   });
 });
 

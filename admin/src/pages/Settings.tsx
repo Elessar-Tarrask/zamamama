@@ -37,7 +37,7 @@ const EMPTY: Draft = {
   voiceFallbackText: "",
   replyDelaySeconds: 5,
   replyDelayMaxSeconds: 12,
-  azureReasoningEffort: "minimal",
+  azureReasoningEffort: "low",
   adminAlertPhone: "",
   pauseOnManualReplyHours: 6,
   maxBotMessagesPerHour: 20,

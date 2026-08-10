@@ -10,6 +10,7 @@ vi.mock("../src/store", () => ({
   pauseConversation: vi.fn(async () => {}),
   wasSentByUs: vi.fn(async () => false),
   matchesRecentOwnOutbound: vi.fn(async () => false),
+  updateLead: vi.fn(async () => {}),
   getSettings: vi.fn(async () => ({
     pauseOnManualReplyHours: 6,
     replyDelaySeconds: 5,
@@ -95,6 +96,18 @@ describe("handleWazzupWebhook", () => {
     const res = fakeRes();
     await handleWazzupWebhook(req(inboundBody({ text: "Хочу спросить про," })), res, "t");
     expect(enqueue).toHaveBeenCalledWith(expect.anything(), { scheduleDelaySeconds: 12 });
+  });
+
+  it("возраст из сообщения сразу попадает в профиль лида", async () => {
+    const res = fakeRes();
+    await handleWazzupWebhook(req(inboundBody({ text: "Малышу 2 годика, хотим к вам" })), res, "t");
+    expect(store.updateLead).toHaveBeenCalledWith("77011234567", { childAge: 2 });
+  });
+
+  it("без возраста профиль не трогаем", async () => {
+    const res = fakeRes();
+    await handleWazzupWebhook(req(inboundBody({ text: "Сколько стоит?" })), res, "t");
+    expect(store.updateLead).not.toHaveBeenCalled();
   });
 
   it("игнорирует группы и другие типы чатов", async () => {

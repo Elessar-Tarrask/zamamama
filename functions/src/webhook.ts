@@ -7,6 +7,7 @@ import { parseWazzupWebhook } from "./providers/wazzup";
 import type { InboundMessage } from "./providers/types";
 import * as store from "./store";
 import { computeReplyDelaySeconds } from "./debounce";
+import { extractChildAge } from "./extract";
 import { PROCESS_QUEUE } from "./config";
 import type { ProcessPayload } from "./types";
 
@@ -91,6 +92,11 @@ async function handleInbound(msg: InboundMessage): Promise<void> {
     dateTimeMs: markerMs,
   });
   await store.setLastInbound(phone, markerMs);
+
+  // Разбираем сообщение сразу: если клиент назвал возраст — в профиль лида,
+  // чтобы бот не переспрашивал (даже если модель не вызовет save_lead_info).
+  const childAge = extractChildAge(msg.text);
+  if (childAge !== undefined) await store.updateLead(phone, { childAge });
 
   // Пауза перед ответом настраивается в панели и зависит от того, выглядит
   // ли последняя фраза законченной (см. debounce.ts). Каждое новое сообщение

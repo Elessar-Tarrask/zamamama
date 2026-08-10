@@ -36,10 +36,11 @@ describe("computeReplyDelaySeconds", () => {
   });
 
   it("зажимает значения в разумные пределы", () => {
-    expect(computeReplyDelaySeconds("ок", { ...s, replyDelaySeconds: 0 })).toBe(2);
+    expect(computeReplyDelaySeconds("ок", { ...s, replyDelaySeconds: 0 })).toBe(0); // ноль разрешён
+    expect(computeReplyDelaySeconds("ок", { ...s, replyDelaySeconds: -5 })).toBe(0);
     expect(computeReplyDelaySeconds("ок", { ...s, replyDelaySeconds: 999 })).toBe(60);
     // max не может быть меньше базовой
     expect(computeReplyDelaySeconds("про,", { ...s, replyDelaySeconds: 10, replyDelayMaxSeconds: 3 })).toBe(10);
-    expect(computeReplyDelaySeconds("ок", { ...s, replyDelaySeconds: Number.NaN })).toBe(2);
+    expect(computeReplyDelaySeconds("ок", { ...s, replyDelaySeconds: Number.NaN })).toBe(0);
   });
 });

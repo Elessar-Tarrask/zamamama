@@ -113,6 +113,14 @@ export async function processConversationTask(payload: ProcessPayload, secrets: 
   // Модель промолчала (редко: исчерпаны итерации/фильтр) — честный fallback.
   if (!finalText) finalText = settings.fallbackText;
 
+  // Пока модель думала, клиент мог дописать ещё — тогда наш ответ устарел:
+  // молча выходим, ответит более свежая задача с полным контекстом.
+  const freshConv = await store.getConversation(phone);
+  if ((freshConv?.lastInboundAtMs ?? 0) > markerMs) {
+    logger.info("stale_reply_dropped", { phone });
+    return;
+  }
+
   const llmMs = Date.now() - tLlmStart;
   const tSendStart = Date.now();
   const bubbles = await sendBotReply(provider, phone, finalText);

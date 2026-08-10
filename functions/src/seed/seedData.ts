@@ -56,8 +56,10 @@ export const DEFAULT_SETTINGS: BotSettings = {
     "Если удобнее позвонить — администратор с радостью перезвонит вам.",
 
   // ——— Скорость ответа ———
-  replyDelaySeconds: 5,
-  replyDelayMaxSeconds: 12,
+  // Базовая пауза почти нулевая: латентности LLM достаточно для «живости»;
+  // 2с — лишь окно, чтобы очередь не отвечала на каждый «пузырь» отдельно.
+  replyDelaySeconds: 2,
+  replyDelayMaxSeconds: 8,
 
   // ——— Handoff ———
   adminAlertPhone: "", // WhatsApp-номер Даны, например "77011234567"

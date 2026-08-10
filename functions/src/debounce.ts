@@ -26,7 +26,7 @@ function clamp(v: number, min: number, max: number): number {
  * Обе величины редактируются в админ-панели (settings/bot).
  */
 export function computeReplyDelaySeconds(text: string | undefined, settings: BotSettings): number {
-  const base = clamp(settings.replyDelaySeconds, 2, 60);
+  const base = clamp(settings.replyDelaySeconds, 0, 60);
   const max = clamp(settings.replyDelayMaxSeconds, base, 90);
   return looksUnfinished(text) ? max : base;
 }

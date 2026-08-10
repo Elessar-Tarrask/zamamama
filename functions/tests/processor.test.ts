@@ -177,6 +177,15 @@ describe("processConversationTask", () => {
     );
   });
 
+  it("если во время обдумывания пришло новое сообщение — устаревший ответ не отправляется", async () => {
+    vi.mocked(store.getConversation)
+      .mockResolvedValueOnce({ ...baseConv, lastInboundAtMs: 1000 }) // проверка маркера
+      .mockResolvedValueOnce({ ...baseConv, lastInboundAtMs: 2000 }); // после LLM: есть новее
+    await processConversationTask({ phone: "1", markerMs: 1000 }, secrets);
+    expect(createMock).toHaveBeenCalled(); // модель отработала
+    expect(sendText).not.toHaveBeenCalled(); // но ответ отброшен
+  });
+
   it("длинный ответ уходит несколькими пузырями, лимит считает один ответ", async () => {
     createMock.mockResolvedValue(
       textCompletion(

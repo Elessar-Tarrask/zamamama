@@ -7,10 +7,10 @@ import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 // (Project settings → General → Your apps → Web). Эти значения не секретны —
 // доступ к данным защищают Firestore rules (custom claim `admin`).
 const firebaseConfig = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME.firebaseapp.com",
-  projectId: "REPLACE_ME",
-  appId: "REPLACE_ME",
+  apiKey: "REPLACE_ME", // появится после регистрации веб-приложения в консоли
+  authDomain: "bolatbektestproject.firebaseapp.com",
+  projectId: "bolatbektestproject",
+  appId: "REPLACE_ME", // появится после регистрации веб-приложения в консоли
 };
 
 export const app = initializeApp(firebaseConfig);

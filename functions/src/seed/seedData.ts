@@ -74,7 +74,7 @@ export const DEFAULT_SETTINGS: BotSettings = {
 
   // ——— Интеграции (несекретное; ключи — в Secret Manager) ———
   wazzupChannelId: "6d45dc835c034275bc3ba36f79f1e943",
-  azureEndpoint: "", // https://<resource>.openai.azure.com
+  azureEndpoint: "https://test-ai-model-image-generator.openai.azure.com",
   azureDeployment: "gpt-5-mini",
   azureApiVersion: "2024-10-21",
 };

@@ -1,12 +1,30 @@
 import type { Request } from "firebase-functions/v2/https";
 import type { Response } from "express";
 import { logger } from "firebase-functions";
+import { getApps, initializeApp } from "firebase-admin/app";
 import { getFunctions } from "firebase-admin/functions";
 import { parseWazzupWebhook } from "./providers/wazzup";
 import type { InboundMessage } from "./providers/types";
 import * as store from "./store";
 import { DEBOUNCE_SECONDS, PROCESS_QUEUE } from "./config";
 import type { ProcessPayload } from "./types";
+
+/**
+ * В эмуляторе firebase-admin требует настоящий OAuth-токен для постановки
+ * Cloud Tasks (ограничение SDK). Даём ему отдельное приложение с фиктивным
+ * токеном — только в эмуляторе; в проде используется приложение по умолчанию.
+ */
+function functionsForEnqueue() {
+  if (process.env.FUNCTIONS_EMULATOR !== "true") return getFunctions();
+  const name = "tasks-emulator";
+  const app =
+    getApps().find((a) => a.name === name) ??
+    initializeApp(
+      { credential: { getAccessToken: async () => ({ access_token: "owner", expires_in: 3600 }) } },
+      name,
+    );
+  return getFunctions(app);
+}
 
 export async function handleWazzupWebhook(req: Request, res: Response, expectedToken: string): Promise<void> {
   if (!expectedToken || req.query.token !== expectedToken) {
@@ -82,7 +100,7 @@ async function handleInbound(msg: InboundMessage): Promise<void> {
   // Ответ уходит не сразу: ждём DEBOUNCE_SECONDS тишины, чтобы человек
   // успел дописать мысль несколькими сообщениями (склейка в processor).
   const payload: ProcessPayload = { phone, markerMs };
-  await getFunctions()
+  await functionsForEnqueue()
     .taskQueue<ProcessPayload>(PROCESS_QUEUE)
     .enqueue(payload, { scheduleDelaySeconds: DEBOUNCE_SECONDS });
 }

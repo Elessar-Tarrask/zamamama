@@ -90,15 +90,28 @@ GOOGLE_CLOUD_PROJECT=<PROJECT_ID> GOOGLE_APPLICATION_CREDENTIALS=<путь-к-ad
 
 ## 5. Локальная разработка
 
+Проверенный поток (реальные учётки не нужны, `demo-` проект работает офлайн):
+
 ```bash
 cd functions && npm install && npm run build
-firebase emulators:start   # functions + firestore + auth + hosting
+cp .secret.local.example .secret.local   # фиктивные секреты для эмулятора
+cd ..
+firebase emulators:start --only functions,firestore,tasks --project demo-keystone
 ```
+
+В соседнем терминале — залить тексты в эмуляторный Firestore и проверить цикл:
+
+```bash
+cd functions
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 GOOGLE_CLOUD_PROJECT=demo-keystone npm run seed
+```
+
+Юнит-тесты ядра (слоты, промпт, вебхук, процессор): `cd functions && npm test`.
 
 Симуляция входящего сообщения (payload как у Wazzup):
 
 ```bash
-curl -X POST "http://127.0.0.1:5001/<PROJECT_ID>/europe-west1/wazzupWebhook?token=dev" \
+curl -X POST "http://127.0.0.1:5001/demo-keystone/europe-west1/wazzupWebhook?token=dev" \
   -H "Content-Type: application/json" \
   -d '{
     "messages": [{

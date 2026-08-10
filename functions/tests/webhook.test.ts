@@ -9,6 +9,7 @@ vi.mock("../src/store", () => ({
   setLastInbound: vi.fn(async () => {}),
   pauseConversation: vi.fn(async () => {}),
   wasSentByUs: vi.fn(async () => false),
+  matchesRecentOwnOutbound: vi.fn(async () => false),
   getSettings: vi.fn(async () => ({
     pauseOnManualReplyHours: 6,
     replyDelaySeconds: 5,
@@ -56,6 +57,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(store.tryMarkWebhookProcessed).mockResolvedValue(true);
   vi.mocked(store.wasSentByUs).mockResolvedValue(false);
+  vi.mocked(store.matchesRecentOwnOutbound).mockResolvedValue(false);
 });
 
 describe("handleWazzupWebhook", () => {
@@ -117,6 +119,26 @@ describe("handleWazzupWebhook", () => {
     expect(store.appendMessage).not.toHaveBeenCalled();
     expect(store.pauseConversation).not.toHaveBeenCalled();
     expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it("эхо без crmMessageId, но с известным providerMessageId — наше, пауза не ставится", async () => {
+    // wasSentByUs: false для crm (нет crm), true для providerMessageId
+    vi.mocked(store.wasSentByUs).mockImplementation(async (id: string) => id === "m1");
+    const res = fakeRes();
+    await handleWazzupWebhook(req(inboundBody({ isEcho: true })), res, "t");
+    expect(store.appendMessage).not.toHaveBeenCalled();
+    expect(store.pauseConversation).not.toHaveBeenCalled();
+  });
+
+  it("эхо, совпадающее с недавним исходящим текстом, — наше (гонка)", async () => {
+    vi.mocked(store.matchesRecentOwnOutbound).mockResolvedValue(true);
+    const res = fakeRes();
+    await handleWazzupWebhook(
+      req(inboundBody({ isEcho: true, text: "Здравствуйте! 😊 Спасибо…" })),
+      res,
+      "t",
+    );
+    expect(store.pauseConversation).not.toHaveBeenCalled();
   });
 
   it("ручной ответ администратора сохраняет и ставит бота на паузу", async () => {

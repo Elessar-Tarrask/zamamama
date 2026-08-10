@@ -64,10 +64,15 @@ async function handleInbound(msg: InboundMessage): Promise<void> {
 
   if (msg.isEcho) {
     // Эхо нашей же отправки (бот или панель) — уже сохранено при отправке.
+    // Wazzup не всегда возвращает crmMessageId в echo, поэтому распознаём
+    // тремя способами: наш crmMessageId, messageId провайдера, записанный
+    // при отправке, и совпадение текста с недавним исходящим (гонка).
     if (msg.crmMessageId && (await store.wasSentByUs(msg.crmMessageId))) return;
+    if (await store.wasSentByUs(msg.providerMessageId)) return;
+    if (await store.matchesRecentOwnOutbound(phone, msg.text)) return;
 
-    // Ручной ответ администратора с телефона / из приложения Wazzup:
-    // сохраняем в транскрипт и ставим бота на паузу, чтобы не перебивал.
+    // Настоящий ручной ответ администратора с телефона / из приложения
+    // Wazzup: сохраняем в транскрипт и ставим бота на паузу.
     const settings = await store.getSettings();
     await store.ensureConversation(phone);
     await appendManualReply(phone, msg, settings.pauseOnManualReplyHours);

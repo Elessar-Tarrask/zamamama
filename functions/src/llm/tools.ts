@@ -168,13 +168,16 @@ export async function executeTool(name: string, argsJson: string, ctx: ToolConte
           try {
             const crmMessageId = randomUUID();
             await store.recordSentMessage(crmMessageId, ctx.settings.adminAlertPhone, true);
-            await ctx.provider.sendText(
+            const { providerMessageId } = await ctx.provider.sendText(
               ctx.settings.adminAlertPhone,
               `⚠️ Клиенту нужен администратор!\nЧат: +${ctx.phone} (wa.me/${ctx.phone})\n` +
                 `Причина: ${reason}${clientQuestion ? `\nВопрос: ${clientQuestion}` : ""}\n` +
                 "Бот в этом диалоге поставлен на паузу.",
               crmMessageId,
             );
+            if (providerMessageId) {
+              await store.recordSentMessage(providerMessageId, ctx.settings.adminAlertPhone, true);
+            }
           } catch (e) {
             logger.warn("Не удалось отправить WhatsApp-алерт администратору", e);
           }

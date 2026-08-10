@@ -63,6 +63,7 @@ export const adminSendMessage = onCall<{ phone: string; text: string }>(
     const crmMessageId = randomUUID();
     await store.recordSentMessage(crmMessageId, phone, false);
     const { providerMessageId } = await provider.sendText(phone, text, crmMessageId);
+    if (providerMessageId) await store.recordSentMessage(providerMessageId, phone, false);
     await store.ensureConversation(phone);
     await store.appendMessage(phone, {
       direction: "out",

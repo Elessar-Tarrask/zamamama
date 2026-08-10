@@ -117,6 +117,8 @@ async function sendBotReply(provider: MessagingProvider, phone: string, text: st
   // Сначала регистрируем отправку, чтобы echo-вебхук распознал её как нашу.
   await store.recordSentMessage(crmMessageId, phone, true);
   const { providerMessageId } = await provider.sendText(phone, text, crmMessageId);
+  // Echo может прийти без crmMessageId — регистрируем и id провайдера.
+  if (providerMessageId) await store.recordSentMessage(providerMessageId, phone, true);
   await store.appendMessage(phone, {
     direction: "out",
     byBot: true,

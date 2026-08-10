@@ -108,9 +108,30 @@ export async function recordSentMessage(crmMessageId: string, phone: string, byB
   });
 }
 
-export async function wasSentByUs(crmMessageId: string): Promise<boolean> {
-  const snap = await db().collection("sentMessages").doc(crmMessageId).get();
+export async function wasSentByUs(messageId: string): Promise<boolean> {
+  if (!messageId) return false;
+  const snap = await db().collection("sentMessages").doc(messageId).get();
   return snap.exists;
+}
+
+/**
+ * Похоже ли echo-сообщение на наше недавнее исходящее? Страховка на случай,
+ * когда echo-вебхук прилетает без crmMessageId и раньше, чем мы успели
+ * записать providerMessageId (гонка). Совпадение текста с исходящим за
+ * последние 10 минут — практически гарантированно наша отправка.
+ */
+export async function matchesRecentOwnOutbound(phone: string, text: string | undefined): Promise<boolean> {
+  if (!text) return false;
+  const snap = await convRef(phone)
+    .collection("messages")
+    .orderBy("dateTimeMs", "desc")
+    .limit(5)
+    .get();
+  const cutoffMs = Date.now() - 10 * 60_000;
+  return snap.docs.some((d) => {
+    const m = d.data() as StoredMessage;
+    return m.direction === "out" && m.dateTimeMs > cutoffMs && m.text === text;
+  });
 }
 
 /** Отметка ответа бота + окно для лимита в час (храним последние 2 часа). */

@@ -140,8 +140,15 @@ export async function processConversationTask(payload: ProcessPayload, secrets: 
 /** Отправляет ответ «пузырями» с паузой набора. Возвращает число пузырей. */
 async function sendBotReply(provider: MessagingProvider, phone: string, text: string): Promise<number> {
   const bubbles = splitIntoBubbles(text);
+  let sent = 0;
   for (let i = 0; i < bubbles.length; i++) {
-    if (i > 0) await sleep(interBubblePauseMs(bubbles[i]));
+    // Страховка от дублей: точно такой же текст уже уходил в последние
+    // 10 минут (ретрай задачи или модель повторила старый блок) — не шлём.
+    if (await store.matchesRecentOwnOutbound(phone, bubbles[i])) {
+      logger.info("duplicate_bubble_suppressed", { phone });
+      continue;
+    }
+    if (sent > 0) await sleep(interBubblePauseMs(bubbles[i]));
     const crmMessageId = randomUUID();
     // Сначала регистрируем отправку, чтобы echo-вебхук распознал её как нашу.
     await store.recordSentMessage(crmMessageId, phone, true);
@@ -157,7 +164,10 @@ async function sendBotReply(provider: MessagingProvider, phone: string, text: st
       providerMessageId,
       dateTimeMs: Date.now(),
     });
+    sent++;
   }
-  await store.recordBotReply(phone, Date.now()); // один логический ответ для лимита
-  return bubbles.length;
+  if (sent > 0) {
+    await store.recordBotReply(phone, Date.now()); // один логический ответ для лимита
+  }
+  return sent;
 }

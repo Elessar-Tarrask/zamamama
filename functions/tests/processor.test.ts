@@ -11,6 +11,7 @@ vi.mock("../src/store", () => ({
   getConversation: vi.fn(),
   getRecentMessages: vi.fn(async (): Promise<StoredMessage[]> => []),
   getEnabledFaq: vi.fn(async () => []),
+  matchesRecentOwnOutbound: vi.fn(async () => false),
   flagConversation: vi.fn(async () => {}),
   recordSentMessage: vi.fn(async () => {}),
   appendMessage: vi.fn(async () => {}),
@@ -66,6 +67,7 @@ beforeEach(() => {
   vi.mocked(store.getSettings).mockResolvedValue({ ...DEFAULT_SETTINGS, azureEndpoint: "https://x" });
   vi.mocked(store.getConversation).mockResolvedValue({ ...baseConv });
   vi.mocked(store.getRecentMessages).mockResolvedValue([inbound("Сколько стоит?")]);
+  vi.mocked(store.matchesRecentOwnOutbound).mockResolvedValue(false);
   createMock.mockResolvedValue(textCompletion("Отвечаю про цены"));
 });
 
@@ -168,6 +170,27 @@ describe("processConversationTask", () => {
     createMock.mockResolvedValue(textCompletion(""));
     await processConversationTask({ phone: "1", markerMs: 1000 }, secrets);
     expect(sendText).toHaveBeenCalledWith("1", DEFAULT_SETTINGS.fallbackText, expect.any(String));
+  });
+
+  it("подавляет пузыри, дословно повторяющие недавние исходящие", async () => {
+    createMock.mockResolvedValue(
+      textCompletion(
+        "Полный день — 400 000 ₸/мес, полдня — 250 000 ₸/мес, как я уже писала.\n\nА вот новое: в стоимость входит четырёхразовое питание.",
+      ),
+    );
+    vi.mocked(store.matchesRecentOwnOutbound).mockImplementation(
+      async (_phone: string, text?: string) => (text ?? "").includes("400 000"),
+    );
+    await processConversationTask({ phone: "1", markerMs: 1000 }, secrets);
+    expect(sendText).toHaveBeenCalledTimes(1);
+    expect(sendText.mock.calls[0][1]).toContain("питание");
+  });
+
+  it("полный повтор (ретрай задачи) не отправляет ничего", async () => {
+    vi.mocked(store.matchesRecentOwnOutbound).mockResolvedValue(true);
+    await processConversationTask({ phone: "1", markerMs: 1000 }, secrets);
+    expect(sendText).not.toHaveBeenCalled();
+    expect(store.recordBotReply).not.toHaveBeenCalled();
   });
 
   it("передаёт настроенную глубину обдумывания в запрос к модели", async () => {

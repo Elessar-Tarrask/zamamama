@@ -25,6 +25,8 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain(DEFAULT_SETTINGS.systemPrompt);
     expect(prompt).toContain("ПРАВИЛА ОБЩЕНИЯ");
     expect(prompt).toContain("log_unanswered_question"); // мягкий сценарий «уточню и вернусь»
+    expect(prompt).toContain("НЕ отправляй повторно"); // запрет повторять старые блоки
+    expect(prompt).toContain("внутренних действиях"); // не озвучивать «записала/сохраню»
     expect(prompt).toContain(DEFAULT_SETTINGS.greetingScript);
     expect(prompt).toContain(DEFAULT_SETTINGS.agePitches["2"]);
     expect(prompt).toContain(DEFAULT_SETTINGS.agePitches["5"]);

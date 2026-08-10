@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output
+functions/lib/
+admin/dist/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+pubsub-debug.log
+*.log
+
+# Secrets — never commit credentials
+.env
+.env.*
+service-account*.json
+*-sa-key.json
+
+# Misc
+.DS_Store

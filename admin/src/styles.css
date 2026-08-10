@@ -1,0 +1,87 @@
+* { box-sizing: border-box; margin: 0; }
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #1e293b;
+  background: #f8fafc;
+}
+
+.centered {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 32px;
+  width: min(380px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-card h1 { font-size: 18px; text-align: center; }
+
+.login-card input,
+.login-card button {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 14px;
+}
+
+.login-card button {
+  background: #0f766e;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+.login-card button:disabled { opacity: 0.6; }
+
+.error { color: #b91c1c; font-size: 13px; }
+.hint { color: #64748b; font-size: 12px; text-align: center; }
+
+.layout { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 220px;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand { font-weight: 700; padding: 8px 20px 16px; font-size: 16px; }
+
+.sidebar a {
+  color: #cbd5e1;
+  text-decoration: none;
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+.sidebar a:hover { background: #1e293b; }
+.sidebar a.active { background: #134e4a; color: #fff; }
+
+.signout {
+  margin: auto 16px 8px;
+  background: none;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.content { flex: 1; padding: 32px; }
+.content h1 { font-size: 22px; margin-bottom: 12px; }
+.stub { color: #64748b; max-width: 640px; line-height: 1.5; }
+code { background: #e2e8f0; padding: 1px 5px; border-radius: 4px; font-size: 13px; }

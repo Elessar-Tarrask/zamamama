@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "seed": "tsx scripts/seed.ts",
     "set-admin": "tsx scripts/setAdminClaim.ts"
   },
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@types/node": "^20.17.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
   }
 }

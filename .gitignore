@@ -16,6 +16,7 @@ pubsub-debug.log
 # Secrets — never commit credentials
 .env
 .env.*
+.secret.local
 service-account*.json
 *-sa-key.json
 

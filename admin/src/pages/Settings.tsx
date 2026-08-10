@@ -11,6 +11,8 @@ interface Draft {
   agePitches: Record<string, string>;
   fallbackText: string;
   voiceFallbackText: string;
+  replyDelaySeconds: number;
+  replyDelayMaxSeconds: number;
   adminAlertPhone: string;
   pauseOnManualReplyHours: number;
   maxBotMessagesPerHour: number;
@@ -32,6 +34,8 @@ const EMPTY: Draft = {
   agePitches: { "2": "", "3": "", "4": "", "5": "" },
   fallbackText: "",
   voiceFallbackText: "",
+  replyDelaySeconds: 5,
+  replyDelayMaxSeconds: 12,
   adminAlertPhone: "",
   pauseOnManualReplyHours: 6,
   maxBotMessagesPerHour: 20,
@@ -140,6 +144,17 @@ export function Settings() {
       ))}
       <Text label="Ответ, когда бот не знает (fallback)" rows={2} value={draft.fallbackText} onChange={(v) => set({ fallbackText: v })} />
       <Text label="Ответ на голосовые/вложения" rows={2} value={draft.voiceFallbackText} onChange={(v) => set({ voiceFallbackText: v })} />
+
+      <h2>Скорость ответа</h2>
+      <p className="hint">
+        Бот выдерживает паузу после последнего сообщения, чтобы ответить на всю мысль целиком,
+        а не на каждый «пузырь». Если фраза выглядит незаконченной («расскажите про,» / «а ещё»),
+        он ждёт дольше — вдруг человек допечатает.
+      </p>
+      <div className="grid">
+        <Num label="Пауза перед ответом, сек" value={draft.replyDelaySeconds} onChange={(v) => set({ replyDelaySeconds: v })} />
+        <Num label="Пауза при незаконченной фразе, сек" value={draft.replyDelayMaxSeconds} onChange={(v) => set({ replyDelayMaxSeconds: v })} />
+      </div>
 
       <h2>Передача администратору</h2>
       <Text

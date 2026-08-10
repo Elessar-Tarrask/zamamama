@@ -6,7 +6,8 @@ import { getFunctions } from "firebase-admin/functions";
 import { parseWazzupWebhook } from "./providers/wazzup";
 import type { InboundMessage } from "./providers/types";
 import * as store from "./store";
-import { DEBOUNCE_SECONDS, PROCESS_QUEUE } from "./config";
+import { computeReplyDelaySeconds } from "./debounce";
+import { PROCESS_QUEUE } from "./config";
 import type { ProcessPayload } from "./types";
 
 /**
@@ -69,22 +70,11 @@ async function handleInbound(msg: InboundMessage): Promise<void> {
     // сохраняем в транскрипт и ставим бота на паузу, чтобы не перебивал.
     const settings = await store.getSettings();
     await store.ensureConversation(phone);
-    await store.appendMessage(phone, {
-      direction: "out",
-      byBot: false,
-      type: msg.type,
-      text: msg.text ?? `[${msg.type}]`,
-      providerMessageId: msg.providerMessageId,
-      dateTimeMs: Date.now(),
-    });
-    await store.pauseConversation(
-      phone,
-      Date.now() + settings.pauseOnManualReplyHours * 3_600_000,
-      "Администратор ответил вручную — бот на паузе",
-    );
+    await appendManualReply(phone, msg, settings.pauseOnManualReplyHours);
     return;
   }
 
+  const settings = await store.getSettings();
   const markerMs = Date.now();
   await store.ensureConversation(phone, msg.contactName);
   await store.appendMessage(phone, {
@@ -97,10 +87,31 @@ async function handleInbound(msg: InboundMessage): Promise<void> {
   });
   await store.setLastInbound(phone, markerMs);
 
-  // Ответ уходит не сразу: ждём DEBOUNCE_SECONDS тишины, чтобы человек
-  // успел дописать мысль несколькими сообщениями (склейка в processor).
+  // Пауза перед ответом настраивается в панели и зависит от того, выглядит
+  // ли последняя фраза законченной (см. debounce.ts). Каждое новое сообщение
+  // ставит свою задачу, устаревшие пропускают себя в processor.
   const payload: ProcessPayload = { phone, markerMs };
   await functionsForEnqueue()
     .taskQueue<ProcessPayload>(PROCESS_QUEUE)
-    .enqueue(payload, { scheduleDelaySeconds: DEBOUNCE_SECONDS });
+    .enqueue(payload, { scheduleDelaySeconds: computeReplyDelaySeconds(msg.text, settings) });
+}
+
+async function appendManualReply(
+  phone: string,
+  msg: InboundMessage,
+  pauseHours: number,
+): Promise<void> {
+  await store.appendMessage(phone, {
+    direction: "out",
+    byBot: false,
+    type: msg.type,
+    text: msg.text ?? `[${msg.type}]`,
+    providerMessageId: msg.providerMessageId,
+    dateTimeMs: Date.now(),
+  });
+  await store.pauseConversation(
+    phone,
+    Date.now() + pauseHours * 3_600_000,
+    "Администратор ответил вручную — бот на паузе",
+  );
 }

@@ -31,6 +31,11 @@ export interface BotSettings {
   fallbackText: string;
   voiceFallbackText: string;
 
+  // Скорость ответа: пауза после последнего сообщения (склейка «пузырей»);
+  // увеличенная — когда фраза выглядит незаконченной (см. debounce.ts)
+  replyDelaySeconds: number;
+  replyDelayMaxSeconds: number;
+
   // Handoff
   adminAlertPhone: string;
   pauseOnManualReplyHours: number;

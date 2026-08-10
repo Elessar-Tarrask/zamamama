@@ -9,7 +9,11 @@ vi.mock("../src/store", () => ({
   setLastInbound: vi.fn(async () => {}),
   pauseConversation: vi.fn(async () => {}),
   wasSentByUs: vi.fn(async () => false),
-  getSettings: vi.fn(async () => ({ pauseOnManualReplyHours: 6 })),
+  getSettings: vi.fn(async () => ({
+    pauseOnManualReplyHours: 6,
+    replyDelaySeconds: 5,
+    replyDelayMaxSeconds: 12,
+  })),
 }));
 
 vi.mock("firebase-admin/functions", () => ({
@@ -69,7 +73,7 @@ describe("handleWazzupWebhook", () => {
     expect(enqueue).not.toHaveBeenCalled();
   });
 
-  it("сохраняет входящее и ставит отложенную задачу на 20 секунд", async () => {
+  it("сохраняет входящее и ставит отложенную задачу с базовой паузой", async () => {
     const res = fakeRes();
     await handleWazzupWebhook(req(inboundBody()), res, "t");
     expect(store.ensureConversation).toHaveBeenCalledWith("77011234567", undefined);
@@ -80,9 +84,15 @@ describe("handleWazzupWebhook", () => {
     expect(store.setLastInbound).toHaveBeenCalled();
     expect(enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ phone: "77011234567" }),
-      { scheduleDelaySeconds: 20 },
+      { scheduleDelaySeconds: 5 },
     );
     expect(res.statusCode).toBe(200);
+  });
+
+  it("ждёт дольше, если фраза выглядит незаконченной", async () => {
+    const res = fakeRes();
+    await handleWazzupWebhook(req(inboundBody({ text: "Хочу спросить про," })), res, "t");
+    expect(enqueue).toHaveBeenCalledWith(expect.anything(), { scheduleDelaySeconds: 12 });
   });
 
   it("игнорирует группы и другие типы чатов", async () => {

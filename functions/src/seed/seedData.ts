@@ -54,6 +54,10 @@ export const DEFAULT_SETTINGS: BotSettings = {
     "Извините, я пока не умею слушать голосовые 🙈 Напишите, пожалуйста, текстом — сразу отвечу! " +
     "Если удобнее позвонить — администратор с радостью перезвонит вам.",
 
+  // ——— Скорость ответа ———
+  replyDelaySeconds: 5,
+  replyDelayMaxSeconds: 12,
+
   // ——— Handoff ———
   adminAlertPhone: "", // WhatsApp-номер Даны, например "77011234567"
   pauseOnManualReplyHours: 6,

@@ -122,10 +122,12 @@ export async function wasSentByUs(messageId: string): Promise<boolean> {
  */
 export async function matchesRecentOwnOutbound(phone: string, text: string | undefined): Promise<boolean> {
   if (!text) return false;
+  // Лимит 20: при очереди быстрых сообщений клиента наш недавний исходящий
+  // вылетал из окна в 5 сообщений, и повтор (второй фолбэк) не подавлялся.
   const snap = await convRef(phone)
     .collection("messages")
     .orderBy("dateTimeMs", "desc")
-    .limit(5)
+    .limit(20)
     .get();
   const cutoffMs = Date.now() - 10 * 60_000;
   return snap.docs.some((d) => {

@@ -11,3 +11,10 @@ export function fmtAlmaty(input: number | string | undefined | null): string {
 }
 
 export const fmtPhone = (phone: string): string => (phone ? `+${phone}` : "—");
+
+/** Только время по Алматы: «14:30». */
+export function fmtAlmatyTime(ms: number): string {
+  const d = new Date(ms + OFFSET_MS);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
+}

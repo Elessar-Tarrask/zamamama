@@ -116,7 +116,22 @@ code { background: #e2e8f0; padding: 1px 5px; border-radius: 4px; font-size: 13p
 
 /* ——— Диалоги ——— */
 .split { display: flex; gap: 20px; height: calc(100vh - 56px); }
-.conv-list { width: 300px; flex-shrink: 0; overflow-y: auto; padding-right: 4px; }
+.conv-list { width: 320px; flex-shrink: 0; overflow-y: auto; padding-right: 4px; }
+
+.global-toggle {
+  display: flex; gap: 8px; align-items: center; font-size: 13px; font-weight: 600;
+  border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; cursor: pointer;
+}
+.global-toggle.on { background: #d1fae5; color: #065f46; }
+.global-toggle.off { background: #fee2e2; color: #991b1b; }
+
+.search {
+  width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px;
+  font-size: 13px; margin-bottom: 10px; background: #fff;
+}
+
+.btn-small.pause { color: #92400e; border-color: #fcd34d; background: #fffbeb; }
+.btn-small.resume { color: #065f46; border-color: #6ee7b7; background: #ecfdf5; }
 .conv-item {
   display: block; width: 100%; text-align: left; background: #fff;
   border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px;

@@ -81,7 +81,7 @@ export const DEFAULT_SETTINGS: BotSettings = {
   maxBotMessagesPerHour: 20,
 
   // ——— Интеграции (несекретное; ключи — в Secret Manager) ———
-  wazzupChannelId: "96f0a10b-7341-4b87-bcfd-b335397ffb84", // канал WhatsApp 77770351140
+  wazzupChannelId: "30a457d8-af59-407d-8429-f3d75e45866c", // канал WhatsApp 77771407397
   azureEndpoint: "https://test-ai-model-image-generator.openai.azure.com",
   azureDeployment: "gpt-5-mini",
   azureApiVersion: "2024-10-21",

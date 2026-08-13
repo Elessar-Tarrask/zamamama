@@ -106,6 +106,29 @@ describe("processConversationTask", () => {
     expect(sendText).not.toHaveBeenCalled();
   });
 
+  it("молчит в заблокированном чате", async () => {
+    vi.mocked(store.getConversation).mockResolvedValue({ ...baseConv, blocked: true });
+    await processConversationTask({ phone: "1", markerMs: 1000 }, secrets);
+    expect(createMock).not.toHaveBeenCalled();
+    expect(sendText).not.toHaveBeenCalled();
+  });
+
+  it("уважает суточный лимит ответов", async () => {
+    const day = Array.from({ length: 60 }, (_, i) => Date.now() - (i + 2) * 3_600_000 / 3);
+    vi.mocked(store.getConversation).mockResolvedValue({ ...baseConv, botReplyTimestampsMs: day });
+    await processConversationTask({ phone: "1", markerMs: 1000 }, secrets);
+    expect(sendText).not.toHaveBeenCalled();
+    expect(store.flagConversation).toHaveBeenCalledWith("1", expect.stringContaining("суточный"));
+  });
+
+  it("флуд: слишком много входящих подряд — бот не отвечает", async () => {
+    const flood = Array.from({ length: 26 }, (_, i) => inbound(`сообщение ${i}`, Date.now() - i * 1000));
+    vi.mocked(store.getRecentMessages).mockResolvedValue(flood.reverse());
+    await processConversationTask({ phone: "1", markerMs: 1000 }, secrets);
+    expect(createMock).not.toHaveBeenCalled();
+    expect(store.flagConversation).toHaveBeenCalledWith("1", expect.stringContaining("Флуд"));
+  });
+
   it("молчит при выключенном боте", async () => {
     vi.mocked(store.getSettings).mockResolvedValue({ ...DEFAULT_SETTINGS, botEnabled: false });
     await processConversationTask({ phone: "1", markerMs: 1000 }, secrets);

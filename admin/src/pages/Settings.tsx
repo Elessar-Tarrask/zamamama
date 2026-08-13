@@ -17,6 +17,7 @@ interface Draft {
   adminAlertPhone: string;
   pauseOnManualReplyHours: number;
   maxBotMessagesPerHour: number;
+  maxBotMessagesPerDay: number;
   calendarId: string;
   tourSlotMinutes: number;
   minLeadHours: number;
@@ -39,8 +40,9 @@ const EMPTY: Draft = {
   replyDelayMaxSeconds: 12,
   azureReasoningEffort: "low",
   adminAlertPhone: "",
-  pauseOnManualReplyHours: 6,
+  pauseOnManualReplyHours: 2,
   maxBotMessagesPerHour: 20,
+  maxBotMessagesPerDay: 60,
   calendarId: "",
   tourSlotMinutes: 60,
   minLeadHours: 3,
@@ -179,6 +181,7 @@ export function Settings() {
       <div className="grid">
         <Num label="Пауза бота после ручного ответа, ч" value={draft.pauseOnManualReplyHours} onChange={(v) => set({ pauseOnManualReplyHours: v })} />
         <Num label="Лимит ответов бота в час на диалог" value={draft.maxBotMessagesPerHour} onChange={(v) => set({ maxBotMessagesPerHour: v })} />
+        <Num label="Лимит ответов бота в сутки на диалог" value={draft.maxBotMessagesPerDay} onChange={(v) => set({ maxBotMessagesPerDay: v })} />
       </div>
 
       <h2>Экскурсии</h2>

@@ -15,6 +15,7 @@ export interface ConvDoc {
   lead?: LeadProfile;
   lastInboundAtMs?: number;
   pausedUntilMs?: number;
+  blocked?: boolean;
   flagReason?: string;
 }
 

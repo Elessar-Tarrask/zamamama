@@ -11,6 +11,7 @@ vi.mock("../src/store", () => ({
   wasSentByUs: vi.fn(async () => false),
   matchesRecentOwnOutbound: vi.fn(async () => false),
   updateLead: vi.fn(async () => {}),
+  flagConversation: vi.fn(async () => {}),
   getSettings: vi.fn(async () => ({
     pauseOnManualReplyHours: 6,
     replyDelaySeconds: 5,
@@ -108,6 +109,25 @@ describe("handleWazzupWebhook", () => {
     const res = fakeRes();
     await handleWazzupWebhook(req(inboundBody({ text: "Сколько стоит?" })), res, "t");
     expect(store.updateLead).not.toHaveBeenCalled();
+  });
+
+  it("спам сохраняется в транскрипт, но задача не ставится", async () => {
+    const res = fakeRes();
+    await handleWazzupWebhook(
+      req(inboundBody({ text: "Заработок на крипте! http://a.kz http://b.kz http://c.kz" })),
+      res,
+      "t",
+    );
+    expect(store.appendMessage).toHaveBeenCalled(); // в панели видно
+    expect(store.flagConversation).toHaveBeenCalledWith("77011234567", expect.stringContaining("спам"));
+    expect(enqueue).not.toHaveBeenCalled(); // модель не тратим, не отвечаем
+  });
+
+  it("гигантское сообщение обрезается при сохранении", async () => {
+    const res = fakeRes();
+    await handleWazzupWebhook(req(inboundBody({ text: "поле ".repeat(280) + "вопрос?" })), res, "t");
+    const saved = vi.mocked(store.appendMessage).mock.calls[0][1] as { text: string };
+    expect(saved.text.length).toBeLessThan(1600);
   });
 
   it("игнорирует группы и другие типы чатов", async () => {

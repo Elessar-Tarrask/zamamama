@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { ChatCompletionCreateParams, ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { interBubblePauseMs, sanitizeForWhatsApp, sleep, splitIntoBubbles } from "./humanize";
 import { CalendarService } from "./calendar";
-import { HISTORY_LIMIT, MAX_LLM_ITERATIONS } from "./config";
+import { FLOOD_MAX_INBOUND, FLOOD_WINDOW_MS, HISTORY_LIMIT, MAX_LLM_ITERATIONS } from "./config";
 import { createLlmClient } from "./llm/client";
 import { buildSystemPrompt } from "./llm/prompt";
 import { executeTool, toolDefinitions, type ToolContext } from "./llm/tools";
@@ -31,21 +31,37 @@ export async function processConversationTask(payload: ProcessPayload, secrets: 
 
   const conv = await store.getConversation(phone);
   if (!conv) return;
+  if (conv.blocked) return; // заблокирован администратором — молчим
   if ((conv.lastInboundAtMs ?? 0) > markerMs) return; // придёт более свежая задача
   if (conv.mode === "human") return;
   if ((conv.pausedUntilMs ?? 0) > Date.now()) return;
 
-  // Защита от зацикливания/спама: лимит ответов бота в час на диалог.
-  const recentReplies = (conv.botReplyTimestampsMs ?? []).filter((t) => t > Date.now() - 3_600_000);
-  if (recentReplies.length >= settings.maxBotMessagesPerHour) {
+  // Защита от зацикливания/спама: лимиты ответов бота на диалог.
+  const stamps = conv.botReplyTimestampsMs ?? [];
+  if (stamps.filter((t) => t > Date.now() - 3_600_000).length >= settings.maxBotMessagesPerHour) {
     await store.flagConversation(phone, "Превышен лимит ответов бота в час — проверьте диалог");
     logger.warn("Достигнут лимит ответов в час", { phone });
+    return;
+  }
+  if (stamps.filter((t) => t > Date.now() - 86_400_000).length >= settings.maxBotMessagesPerDay) {
+    await store.flagConversation(phone, "Превышен суточный лимит ответов бота — проверьте диалог");
+    logger.warn("Достигнут суточный лимит ответов", { phone });
     return;
   }
 
   const history = await store.getRecentMessages(phone, HISTORY_LIMIT);
   if (history.length === 0) return;
   if (history[history.length - 1].direction === "out") return; // уже отвечено
+
+  // Флуд: слишком много входящих за короткое окно — не кормим модель.
+  const recentInbound = history.filter(
+    (m) => m.direction === "in" && m.dateTimeMs > Date.now() - FLOOD_WINDOW_MS,
+  );
+  if (recentInbound.length >= FLOOD_MAX_INBOUND) {
+    await store.flagConversation(phone, "Флуд: слишком много сообщений подряд — бот приостановил ответы");
+    logger.warn("Флуд-защита сработала", { phone });
+    return;
+  }
 
   const provider: MessagingProvider = new WazzupProvider(secrets.wazzupApiKey, settings.wazzupChannelId);
 

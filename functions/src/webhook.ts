@@ -8,6 +8,7 @@ import type { InboundMessage } from "./providers/types";
 import * as store from "./store";
 import { computeReplyDelaySeconds } from "./debounce";
 import { extractChildAge } from "./extract";
+import { looksLikeSpam, truncateInbound } from "./spam";
 import { PROCESS_QUEUE } from "./config";
 import type { ProcessPayload } from "./types";
 
@@ -82,15 +83,24 @@ async function handleInbound(msg: InboundMessage): Promise<void> {
 
   const settings = await store.getSettings();
   const markerMs = Date.now();
+  const inboundText = truncateInbound(msg.text ?? `[${msg.type}]`);
   await store.ensureConversation(phone, msg.contactName);
   await store.appendMessage(phone, {
     direction: "in",
     byBot: false,
     type: msg.type,
-    text: msg.text ?? `[${msg.type}]`,
+    text: inboundText,
     providerMessageId: msg.providerMessageId,
     dateTimeMs: markerMs,
   });
+
+  // Спам (ссылки пачками, реклама, простыни) сохраняем в транскрипт, но
+  // модель не вызываем и не отвечаем — тишина лучший ответ спамеру.
+  if (looksLikeSpam(msg.text)) {
+    await store.flagConversation(phone, "Похоже на спам — бот не отвечает на это сообщение");
+    return;
+  }
+
   await store.setLastInbound(phone, markerMs);
 
   // Разбираем сообщение сразу: если клиент назвал возраст — в профиль лида,

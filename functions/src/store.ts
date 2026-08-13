@@ -136,16 +136,24 @@ export async function matchesRecentOwnOutbound(phone: string, text: string | und
   });
 }
 
-/** Отметка ответа бота + окно для лимита в час (храним последние 2 часа). */
+/** Отметка ответа бота; храним 25 часов — для часового и суточного лимитов. */
 export async function recordBotReply(phone: string, atMs: number): Promise<void> {
   await db().runTransaction(async (tx) => {
     const ref = convRef(phone);
     const snap = await tx.get(ref);
     const prev = (snap.get("botReplyTimestampsMs") as number[] | undefined) ?? [];
-    const kept = prev.filter((t) => t > atMs - 2 * 3_600_000);
+    const kept = prev.filter((t) => t > atMs - 25 * 3_600_000);
     kept.push(atMs);
     tx.set(ref, { botReplyTimestampsMs: kept }, { merge: true });
   });
+}
+
+/** Блокировка чата администратором: сообщения сохраняются, бот молчит. */
+export async function setBlocked(phone: string, blocked: boolean): Promise<void> {
+  await convRef(phone).set(
+    { blocked, flagReason: blocked ? "Заблокирован администратором" : "" },
+    { merge: true },
+  );
 }
 
 export async function logUnanswered(phone: string, question: string, context: string): Promise<void> {

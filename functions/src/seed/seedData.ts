@@ -79,6 +79,7 @@ export const DEFAULT_SETTINGS: BotSettings = {
 
   // ——— Защита ———
   maxBotMessagesPerHour: 20,
+  maxBotMessagesPerDay: 60,
 
   // ——— Интеграции (несекретное; ключи — в Secret Manager) ———
   wazzupChannelId: "30a457d8-af59-407d-8429-f3d75e45866c", // канал WhatsApp 77771407397

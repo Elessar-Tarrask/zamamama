@@ -100,6 +100,15 @@ export const adminSendMessage = onCall<{ phone: string; text: string; pauseBot?:
   },
 );
 
+/** Блокировка чата: сообщения сохраняются, бот молчит навсегда до разблокировки. */
+export const adminSetBlocked = onCall<{ phone: string; blocked: boolean }>(async (req) => {
+  assertAdmin(req.auth);
+  const phone = String(req.data?.phone ?? "").replace(/\D/g, "");
+  if (!phone) throw new HttpsError("invalid-argument", "Нужен phone");
+  await store.setBlocked(phone, req.data?.blocked === true);
+  return { ok: true };
+});
+
 /** Переключение диалога: вернуть боту / забрать человеку. */
 export const adminSetMode = onCall<{ phone: string; mode: "bot" | "human" }>(async (req) => {
   assertAdmin(req.auth);

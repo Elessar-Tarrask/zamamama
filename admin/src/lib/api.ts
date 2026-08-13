@@ -14,3 +14,8 @@ export async function adminSendMessage(phone: string, text: string, pauseBot = t
 export async function adminSetMode(phone: string, mode: "bot" | "human"): Promise<void> {
   await httpsCallable(functions, "adminSetMode")({ phone, mode });
 }
+
+/** Заблокировать/разблокировать чат: сообщения сохраняются, бот молчит. */
+export async function adminSetBlocked(phone: string, blocked: boolean): Promise<void> {
+  await httpsCallable(functions, "adminSetBlocked")({ phone, blocked });
+}

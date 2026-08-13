@@ -53,6 +53,7 @@ export interface BotSettings {
 
   // Защита
   maxBotMessagesPerHour: number;
+  maxBotMessagesPerDay: number;
 
   // Интеграции (несекретная часть)
   wazzupChannelId: string;
@@ -77,6 +78,8 @@ export interface Conversation {
   lead: LeadProfile;
   lastInboundAtMs: number;
   pausedUntilMs?: number;
+  /** Заблокирован администратором: сообщения сохраняются, бот молчит. */
+  blocked?: boolean;
   flagReason?: string;
   botReplyTimestampsMs?: number[];
   createdAtMs: number;

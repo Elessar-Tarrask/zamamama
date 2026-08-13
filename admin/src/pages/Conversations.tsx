@@ -3,11 +3,12 @@ import {
   collection, doc, limit, limitToLast, onSnapshot, orderBy, query, setDoc,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import { adminSendMessage, adminSetMode } from "../lib/api";
+import { adminSendMessage, adminSetBlocked, adminSetMode } from "../lib/api";
 import { fmtAlmaty, fmtAlmatyTime, fmtPhone } from "../lib/format";
 import type { ConvDoc, MessageDoc } from "../lib/types";
 
 function statusOf(c: ConvDoc): { label: string; cls: string; botActive: boolean } {
+  if (c.blocked) return { label: "🚫 заблокирован", cls: "badge human", botActive: false };
   if (c.mode === "human") return { label: "⏸ бот на паузе", cls: "badge human", botActive: false };
   if ((c.pausedUntilMs ?? 0) > Date.now())
     return { label: `⏸ пауза до ${fmtAlmatyTime(c.pausedUntilMs as number)}`, cls: "badge paused", botActive: false };
@@ -98,6 +99,16 @@ function Transcript({ conv }: { conv: ConvDoc }) {
     }
   }
 
+  async function toggleBlock(blocked: boolean) {
+    if (blocked && !window.confirm(`Заблокировать ${fmtPhone(conv.id)}? Бот перестанет отвечать этому номеру совсем.`)) return;
+    setError("");
+    try {
+      await adminSetBlocked(conv.id, blocked);
+    } catch (e) {
+      setError(`Ошибка: ${String(e)}`);
+    }
+  }
+
   const lead = conv.lead ?? {};
 
   return (
@@ -117,13 +128,23 @@ function Transcript({ conv }: { conv: ConvDoc }) {
           )}
         </div>
         <div className="actions">
-          {status.botActive ? (
-            <button className="btn-small pause" onClick={() => void setBot(false)}>
-              ⏸ Пауза бота
+          {!conv.blocked &&
+            (status.botActive ? (
+              <button className="btn-small pause" onClick={() => void setBot(false)}>
+                ⏸ Пауза бота
+              </button>
+            ) : (
+              <button className="btn-small resume" onClick={() => void setBot(true)}>
+                ▶ Возобновить бота
+              </button>
+            ))}
+          {conv.blocked ? (
+            <button className="btn-small resume" onClick={() => void toggleBlock(false)}>
+              Разблокировать
             </button>
           ) : (
-            <button className="btn-small resume" onClick={() => void setBot(true)}>
-              ▶ Возобновить бота
+            <button className="btn-small danger" onClick={() => void toggleBlock(true)}>
+              🚫 Заблокировать
             </button>
           )}
         </div>

@@ -12,8 +12,3 @@ export const HISTORY_LIMIT = 30;
 // Имя очереди Cloud Tasks для функции processConversation (с регионом,
 // иначе admin SDK ищет её в us-central1).
 export const PROCESS_QUEUE = `locations/${REGION}/functions/processConversation`;
-
-// Флуд-защита: столько входящих за окно — и бот перестаёт отвечать в чате
-// (флаг администратору), пока поток не утихнет.
-export const FLOOD_WINDOW_MS = 10 * 60_000;
-export const FLOOD_MAX_INBOUND = 25;

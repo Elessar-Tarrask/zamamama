@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { ChatCompletionCreateParams, ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { interBubblePauseMs, sanitizeForWhatsApp, sleep, splitIntoBubbles } from "./humanize";
 import { CalendarService } from "./calendar";
-import { FLOOD_MAX_INBOUND, FLOOD_WINDOW_MS, HISTORY_LIMIT, MAX_LLM_ITERATIONS } from "./config";
+import { HISTORY_LIMIT, MAX_LLM_ITERATIONS } from "./config";
 import { createLlmClient } from "./llm/client";
 import { buildSystemPrompt } from "./llm/prompt";
 import { executeTool, toolDefinitions, type ToolContext } from "./llm/tools";
@@ -54,10 +54,11 @@ export async function processConversationTask(payload: ProcessPayload, secrets: 
   if (history[history.length - 1].direction === "out") return; // уже отвечено
 
   // Флуд: слишком много входящих за короткое окно — не кормим модель.
+  const floodWindowMs = settings.floodWindowMinutes * 60_000;
   const recentInbound = history.filter(
-    (m) => m.direction === "in" && m.dateTimeMs > Date.now() - FLOOD_WINDOW_MS,
+    (m) => m.direction === "in" && m.dateTimeMs > Date.now() - floodWindowMs,
   );
-  if (recentInbound.length >= FLOOD_MAX_INBOUND) {
+  if (settings.floodMaxInbound > 0 && recentInbound.length >= settings.floodMaxInbound) {
     await store.flagConversation(phone, "Флуд: слишком много сообщений подряд — бот приостановил ответы");
     logger.warn("Флуд-защита сработала", { phone });
     return;

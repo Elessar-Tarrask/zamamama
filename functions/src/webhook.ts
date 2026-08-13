@@ -96,7 +96,7 @@ async function handleInbound(msg: InboundMessage): Promise<void> {
 
   // Спам (ссылки пачками, реклама, простыни) сохраняем в транскрипт, но
   // модель не вызываем и не отвечаем — тишина лучший ответ спамеру.
-  if (looksLikeSpam(msg.text)) {
+  if (looksLikeSpam(msg.text, settings)) {
     await store.flagConversation(phone, "Похоже на спам — бот не отвечает на это сообщение");
     return;
   }

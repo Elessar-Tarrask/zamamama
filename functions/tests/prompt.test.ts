@@ -50,4 +50,15 @@ describe("buildSystemPrompt", () => {
     const p = buildSystemPrompt(DEFAULT_SETTINGS, [], conv, NOW);
     expect(p).toContain("(база FAQ пока пуста)");
   });
+
+  it("содержит общую информацию о садике", () => {
+    expect(prompt).toContain("ОБЩАЯ ИНФОРМАЦИЯ О САДИКЕ");
+    expect(prompt).toContain("Toddler — 2–3 года"); // факты из базы знаний
+    expect(prompt).toContain("[ЗАПОЛНИТЬ"); // незаполненные разделы видны модели как отсутствующие
+  });
+
+  it("пустая база знаний — честная заглушка", () => {
+    const p = buildSystemPrompt({ ...DEFAULT_SETTINGS, businessInfo: "" }, [], conv, NOW);
+    expect(p).toContain("(раздел пока не заполнен)");
+  });
 });

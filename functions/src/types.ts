@@ -30,6 +30,8 @@ export interface BotSettings {
   agePitches: Record<string, string>;
   fallbackText: string;
   voiceFallbackText: string;
+  /** Свободная база знаний: бот отвечает из неё своими словами. */
+  businessInfo: string;
 
   // Скорость ответа: пауза после последнего сообщения (склейка «пузырей»);
   // увеличенная — когда фраза выглядит незаконченной (см. debounce.ts)
@@ -51,9 +53,19 @@ export interface BotSettings {
   timezone: string;
   utcOffsetMinutes: number;
 
-  // Защита
+  // Защита (всё редактируется из панели)
   maxBotMessagesPerHour: number;
   maxBotMessagesPerDay: number;
+  spamFilterEnabled: boolean;
+  /** Столько ссылок в одном сообщении и больше — спам. */
+  spamMaxLinks: number;
+  /** Длиннее этого (символов) — спам. */
+  spamMaxChars: number;
+  /** Спам-слова через запятую; ищутся как части слов. */
+  spamKeywords: string;
+  /** Флуд: входящих за окно (0 — защита выключена). */
+  floodMaxInbound: number;
+  floodWindowMinutes: number;
 
   // Интеграции (несекретная часть)
   wazzupChannelId: string;

@@ -11,6 +11,7 @@ interface Draft {
   agePitches: Record<string, string>;
   fallbackText: string;
   voiceFallbackText: string;
+  businessInfo: string;
   replyDelaySeconds: number;
   replyDelayMaxSeconds: number;
   azureReasoningEffort: string;
@@ -18,6 +19,12 @@ interface Draft {
   pauseOnManualReplyHours: number;
   maxBotMessagesPerHour: number;
   maxBotMessagesPerDay: number;
+  spamFilterEnabled: boolean;
+  spamMaxLinks: number;
+  spamMaxChars: number;
+  spamKeywords: string;
+  floodMaxInbound: number;
+  floodWindowMinutes: number;
   calendarId: string;
   tourSlotMinutes: number;
   minLeadHours: number;
@@ -36,6 +43,7 @@ const EMPTY: Draft = {
   agePitches: { "2": "", "3": "", "4": "", "5": "" },
   fallbackText: "",
   voiceFallbackText: "",
+  businessInfo: "",
   replyDelaySeconds: 5,
   replyDelayMaxSeconds: 12,
   azureReasoningEffort: "low",
@@ -43,6 +51,12 @@ const EMPTY: Draft = {
   pauseOnManualReplyHours: 2,
   maxBotMessagesPerHour: 20,
   maxBotMessagesPerDay: 60,
+  spamFilterEnabled: true,
+  spamMaxLinks: 3,
+  spamMaxChars: 2000,
+  spamKeywords: "",
+  floodMaxInbound: 25,
+  floodWindowMinutes: 10,
   calendarId: "",
   tourSlotMinutes: 60,
   minLeadHours: 3,
@@ -149,6 +163,15 @@ export function Settings() {
       <Text label="Ответ, когда бот не знает (fallback)" rows={2} value={draft.fallbackText} onChange={(v) => set({ fallbackText: v })} />
       <Text label="Ответ на голосовые/вложения" rows={2} value={draft.voiceFallbackText} onChange={(v) => set({ voiceFallbackText: v })} />
 
+      <h2>Общая информация о садике (база знаний)</h2>
+      <Text
+        label="Бот отвечает из этого текста своими словами — пишите в свободной форме"
+        rows={18}
+        value={draft.businessInfo}
+        onChange={(v) => set({ businessInfo: v })}
+        hint="Факты и цифры бот передаёт точно. Строки с пометкой [ЗАПОЛНИТЬ] бот считает отсутствующими и передаёт такие вопросы администратору. Готовые FAQ имеют приоритет и отправляются дословно."
+      />
+
       <h2>Скорость ответа</h2>
       <p className="hint">
         Бот выдерживает паузу после последнего сообщения, чтобы ответить на всю мысль целиком,
@@ -183,6 +206,29 @@ export function Settings() {
         <Num label="Лимит ответов бота в час на диалог" value={draft.maxBotMessagesPerHour} onChange={(v) => set({ maxBotMessagesPerHour: v })} />
         <Num label="Лимит ответов бота в сутки на диалог" value={draft.maxBotMessagesPerDay} onChange={(v) => set({ maxBotMessagesPerDay: v })} />
       </div>
+
+      <h2>Защита от спама</h2>
+      <label className="toggle">
+        <input
+          type="checkbox"
+          checked={draft.spamFilterEnabled}
+          onChange={(e) => set({ spamFilterEnabled: e.target.checked })}
+        />
+        <b>Спам-фильтр включён</b> (пачки ссылок, спам-слова, простыни — сохраняются в диалоге, но остаются без ответа)
+      </label>
+      <div className="grid">
+        <Num label="Ссылок в сообщении = спам (0 — выкл)" value={draft.spamMaxLinks} onChange={(v) => set({ spamMaxLinks: v })} />
+        <Num label="Длина сообщения = спам, символов (0 — выкл)" value={draft.spamMaxChars} onChange={(v) => set({ spamMaxChars: v })} />
+        <Num label="Флуд: сообщений за окно (0 — выкл)" value={draft.floodMaxInbound} onChange={(v) => set({ floodMaxInbound: v })} />
+        <Num label="Флуд: окно, минут" value={draft.floodWindowMinutes} onChange={(v) => set({ floodWindowMinutes: v })} />
+      </div>
+      <Text
+        label="Спам-слова (через запятую; ищутся как части слов, минимум 4 символа)"
+        rows={3}
+        value={draft.spamKeywords}
+        onChange={(v) => set({ spamKeywords: v })}
+        hint="Например: крипт, казино, накрутк, рассылк. Сообщение с таким словом не получит ответа и будет помечено в диалогах."
+      />
 
       <h2>Экскурсии</h2>
       <Text

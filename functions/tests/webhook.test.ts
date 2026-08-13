@@ -16,6 +16,10 @@ vi.mock("../src/store", () => ({
     pauseOnManualReplyHours: 6,
     replyDelaySeconds: 5,
     replyDelayMaxSeconds: 12,
+    spamFilterEnabled: true,
+    spamMaxLinks: 3,
+    spamMaxChars: 2000,
+    spamKeywords: "крипт, накрутк",
   })),
 }));
 

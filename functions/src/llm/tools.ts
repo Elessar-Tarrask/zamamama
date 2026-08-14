@@ -1,7 +1,7 @@
 import type { ChatCompletionTool } from "openai/resources/chat/completions";
 import { randomUUID } from "node:crypto";
 import { logger } from "firebase-functions";
-import type { CalendarService } from "../calendar";
+import { isValidSlotStart, type CalendarService } from "../calendar";
 import type { MessagingProvider } from "../providers/types";
 import type { BotSettings } from "../types";
 import * as store from "../store";
@@ -20,8 +20,9 @@ export const toolDefinitions: ChatCompletionTool[] = [
     function: {
       name: "get_available_slots",
       description:
-        "Получить ближайшие свободные слоты для экскурсии по садику. " +
-        "Вызывай, когда клиент хочет прийти на экскурсию, ПЕРЕД тем как предлагать время.",
+        "Возвращает ПОЛНЫЙ список свободного времени экскурсий на ближайшие дни. " +
+        "Вызывай перед тем, как предлагать время. Предлагай клиенту 2–3 ближайших варианта, " +
+        "остальные держи про запас. Времени, которого нет в списке, НЕ существует.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
     },
   },
@@ -37,7 +38,8 @@ export const toolDefinitions: ChatCompletionTool[] = [
         properties: {
           slotStartIso: {
             type: "string",
-            description: "startIso выбранного слота (ISO 8601, как вернул get_available_slots)",
+            description:
+              "startIso выбранного слота — СКОПИРУЙ точно из результата get_available_slots, не вычисляй сам",
           },
           parentName: { type: "string", description: "Имя родителя" },
           childAge: { type: "number", description: "Возраст ребёнка в годах, если известен" },
@@ -138,31 +140,48 @@ export async function executeTool(name: string, argsJson: string, ctx: ToolConte
             hint: "Скажи клиенту, что администратор свяжется для выбора времени, и вызови handoff_to_human.",
           });
         }
-        const slots = await ctx.calendar.getFreeSlots(5);
+        const slots = await ctx.calendar.getFreeSlots();
         if (slots.length === 0) {
           return JSON.stringify({
             slots: [],
             hint: "Свободных слотов в ближайшие дни нет — предложи передать вопрос администратору.",
           });
         }
-        return JSON.stringify({ slots });
+        return JSON.stringify({
+          slots,
+          note:
+            "Это ПОЛНЫЙ список свободного времени. Предложи 2–3 ближайших; " +
+            "времени, которого здесь нет, не существует — оно занято или вне графика.",
+        });
       }
 
       case "book_tour": {
-        if (!ctx.calendar) return JSON.stringify({ error: "calendar_not_configured" });
         const slotStartIso = String(args.slotStartIso ?? "");
         const parentName = String(args.parentName ?? "").trim();
         const childAge = typeof args.childAge === "number" ? args.childAge : undefined;
         const comment = typeof args.comment === "string" ? args.comment : undefined;
         if (!slotStartIso || !parentName) return JSON.stringify({ error: "missing_fields" });
 
+        // Защита от выдуманного времени: бронировать можно только слоты сетки.
+        if (!isValidSlotStart(ctx.settings, slotStartIso)) {
+          return JSON.stringify({
+            error: "not_a_valid_slot",
+            hint: "Такого времени нет в графике экскурсий. Вызови get_available_slots и используй startIso ТОЧНО из списка.",
+          });
+        }
+        if (!ctx.calendar) return JSON.stringify({ error: "calendar_not_configured" });
+
         const result = await ctx.calendar.bookSlot({
           slotStartIso, phone: ctx.phone, parentName, childAge, comment,
         });
         if (!result.ok) {
+          // Повторный вызов на то же время этим же клиентом — уже записан, это успех.
+          if (result.reason === "slot_already_taken" && (await store.hasBooking(ctx.phone, slotStartIso))) {
+            return JSON.stringify({ ok: true, alreadyBooked: true, bookedStartIso: slotStartIso });
+          }
           return JSON.stringify({
             error: result.reason,
-            hint: "Слот уже занят — вызови get_available_slots и предложи другие варианты.",
+            hint: "Это время занято — вызови get_available_slots и предложи клиенту 2–3 других варианта из списка.",
           });
         }
         await store.createBooking({

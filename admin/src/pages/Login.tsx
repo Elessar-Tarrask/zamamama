@@ -46,6 +46,11 @@ export function Login() {
         <p className="hint">
           Доступ выдаёт разработчик скриптом set-admin (см. docs/SETUP.md).
         </p>
+        <p className="credit">
+          Разработка — Zhiyentayev Khazretsultan · Telegram{" "}
+          <a href="https://t.me/Tarrask" target="_blank" rel="noreferrer">@Tarrask</a>
+          <br />© 2026. Все права защищены.
+        </p>
       </form>
     </div>
   );

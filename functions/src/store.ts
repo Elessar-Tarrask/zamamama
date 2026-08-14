@@ -180,4 +180,15 @@ export async function createBooking(booking: BookingRecord): Promise<void> {
   await db().collection("bookings").add({ ...booking, createdAtMs: Date.now() });
 }
 
+/** Есть ли уже бронь этого клиента на это время (идемпотентность book_tour). */
+export async function hasBooking(phone: string, slotStartIso: string): Promise<boolean> {
+  const snap = await db()
+    .collection("bookings")
+    .where("phone", "==", phone)
+    .where("slotStartIso", "==", slotStartIso)
+    .limit(1)
+    .get();
+  return !snap.empty;
+}
+
 export { FieldValue };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeFreeSlots, formatSlotLabel } from "../src/calendar";
+import { computeFreeSlots, formatSlotLabel, isValidSlotStart } from "../src/calendar";
 import { DEFAULT_SETTINGS } from "../src/seed/seedData";
 import type { BotSettings } from "../src/types";
 
@@ -16,17 +16,24 @@ const settings: BotSettings = {
 const MONDAY_9_LOCAL = Date.UTC(2026, 7, 10, 4, 0, 0);
 
 describe("computeFreeSlots", () => {
-  it("предлагает слоты не раньше minLeadHours и не больше 2 в день", () => {
+  it("отдаёт ПОЛНЫЙ список дня, не раньше minLeadHours", () => {
     const slots = computeFreeSlots(settings, [], MONDAY_9_LOCAL, 5);
-    // Сейчас 09:00 + 3 часа → первый возможный слот 12:00 местного
+    // Сейчас 09:00 + 3 часа → первый возможный слот 12:00; дальше весь день подряд
     expect(slots.map((s) => s.startIso)).toEqual([
       new Date(Date.UTC(2026, 7, 10, 7, 0)).toISOString(), // пн 12:00
       new Date(Date.UTC(2026, 7, 10, 8, 0)).toISOString(), // пн 13:00
+      new Date(Date.UTC(2026, 7, 10, 9, 0)).toISOString(), // пн 14:00
+      new Date(Date.UTC(2026, 7, 10, 10, 0)).toISOString(), // пн 15:00
       new Date(Date.UTC(2026, 7, 11, 4, 0)).toISOString(), // вт 09:00
-      new Date(Date.UTC(2026, 7, 11, 5, 0)).toISOString(), // вт 10:00
-      new Date(Date.UTC(2026, 7, 12, 4, 0)).toISOString(), // ср 09:00
     ]);
     expect(slots[0].label).toBe("понедельник, 10 августа, 12:00");
+  });
+
+  it("необязательный лимит «в день» продолжает работать, если задан", () => {
+    const slots = computeFreeSlots(settings, [], MONDAY_9_LOCAL, 5, 2);
+    expect(slots.map((s) => s.label.slice(0, 3) + " " + s.label.slice(-5))).toEqual([
+      "пон 12:00", "пон 13:00", "вто 09:00", "вто 10:00", "сре 09:00",
+    ]);
   });
 
   it("пропускает занятые интервалы", () => {
@@ -57,6 +64,20 @@ describe("computeFreeSlots", () => {
 
   it("не отдаёт больше maxSlots", () => {
     expect(computeFreeSlots(settings, [], MONDAY_9_LOCAL, 3)).toHaveLength(3);
+  });
+});
+
+describe("isValidSlotStart", () => {
+  it("принимает время строго по сетке экскурсий", () => {
+    // среда 19.08.2026, 11:00 Алматы = 06:00Z — валидный слот сетки 9–16
+    expect(isValidSlotStart(settings, "2026-08-19T06:00:00.000Z")).toBe(true);
+    // 16:00 местного — за пределами окна (последний старт 15:00)
+    expect(isValidSlotStart(settings, "2026-08-19T11:00:00.000Z")).toBe(false);
+    // суббота — выходной
+    expect(isValidSlotStart(settings, "2026-08-15T05:00:00.000Z")).toBe(false);
+    // не на границе часа
+    expect(isValidSlotStart(settings, "2026-08-19T06:30:00.000Z")).toBe(false);
+    expect(isValidSlotStart(settings, "мусор")).toBe(false);
   });
 });
 

@@ -37,6 +37,11 @@ body {
   border-radius: 8px; padding: 8px; font-size: 12px; cursor: pointer;
 }
 
+.credit { color: #94a3b8; font-size: 11px; text-align: center; line-height: 1.5; }
+.credit a { color: #64748b; }
+.sidebar-credit { padding: 10px 16px 4px; color: #64748b; }
+.sidebar-credit a { color: #94a3b8; }
+
 .content { flex: 1; padding: 28px 32px; min-width: 0; }
 .content h1 { font-size: 22px; margin-bottom: 12px; }
 .content h2 { font-size: 16px; margin: 24px 0 10px; color: #0f172a; }

@@ -36,7 +36,7 @@ export function computeFreeSlots(
   busy: BusyInterval[],
   nowMs: number,
   maxSlots: number,
-  maxPerDay = 2,
+  maxPerDay = Number.POSITIVE_INFINITY,
 ): TourSlot[] {
   const offsetMs = settings.utcOffsetMinutes * 60_000;
   const earliestMs = nowMs + settings.minLeadHours * 3_600_000;
@@ -70,6 +70,23 @@ export function computeFreeSlots(
   return slots;
 }
 
+/**
+ * Лежит ли время на сетке экскурсий (день недели, часы, кратность слоту)?
+ * Ловит выдуманные моделью startIso — бронировать можно только реальные слоты.
+ */
+export function isValidSlotStart(settings: BotSettings, slotStartIso: string): boolean {
+  const startMs = Date.parse(slotStartIso);
+  if (Number.isNaN(startMs)) return false;
+  const local = new Date(startMs + settings.utcOffsetMinutes * 60_000);
+  const isoWeekday = ((local.getUTCDay() + 6) % 7) + 1;
+  if (!settings.tourHours.days.includes(isoWeekday)) return false;
+  const minutes = local.getUTCHours() * 60 + local.getUTCMinutes();
+  const startMin = settings.tourHours.startHour * 60;
+  const endMin = settings.tourHours.endHour * 60;
+  if (minutes < startMin || minutes + settings.tourSlotMinutes > endMin) return false;
+  return (minutes - startMin) % settings.tourSlotMinutes === 0;
+}
+
 export class CalendarService {
   private cal: calendar_v3.Calendar;
 
@@ -97,7 +114,12 @@ export class CalendarService {
       .map((b) => ({ startMs: Date.parse(b.start as string), endMs: Date.parse(b.end as string) }));
   }
 
-  async getFreeSlots(maxSlots = 5, nowMs = Date.now()): Promise<TourSlot[]> {
+  /**
+   * ПОЛНЫЙ список свободных слотов в горизонте записи. Урезать его нельзя:
+   * модель считает всё, чего нет в списке, занятым (реальный инцидент —
+   * список обрывался на середине недели, и свободное время «стало занятым»).
+   */
+  async getFreeSlots(maxSlots = 80, nowMs = Date.now()): Promise<TourSlot[]> {
     const rangeEndMs = nowMs + this.settings.maxDaysAhead * 86_400_000;
     const busy = await this.queryBusy(nowMs, rangeEndMs);
     return computeFreeSlots(this.settings, busy, nowMs, maxSlots);

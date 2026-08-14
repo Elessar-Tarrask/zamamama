@@ -58,6 +58,13 @@ export function App() {
         <button className="signout" onClick={() => void signOut(auth)}>
           Выйти ({user.email})
         </button>
+        <div className="credit sidebar-credit">
+          Разработка — Zhiyentayev Khazretsultan
+          <br />
+          Telegram{" "}
+          <a href="https://t.me/Tarrask" target="_blank" rel="noreferrer">@Tarrask</a>{" "}
+          · © 2026. Все права защищены.
+        </div>
       </nav>
       <main className="content">{page.render()}</main>
     </div>

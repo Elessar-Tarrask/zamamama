@@ -11,6 +11,7 @@ vi.mock("../src/store", () => ({
   recordSentMessage: vi.fn(async () => {}),
   updateLead: vi.fn(async () => {}),
   createBooking: vi.fn(async () => {}),
+  hasBooking: vi.fn(async () => false),
 }));
 
 vi.mock("firebase-functions", () => ({
@@ -87,6 +88,31 @@ describe("save_lead_info / прочее", () => {
 
   it("слоты без настроенного календаря — понятная ошибка", async () => {
     const res = JSON.parse(await executeTool("get_available_slots", "{}", ctx));
+    expect(res.error).toBe("calendar_not_configured");
+  });
+
+  it("book_tour отвергает выдуманное время вне сетки экскурсий", async () => {
+    // 16:00 местного в среду — за пределами окна 9–16
+    const res = JSON.parse(
+      await executeTool(
+        "book_tour",
+        '{"slotStartIso":"2026-08-19T11:00:00.000Z","parentName":"Болатбек"}',
+        ctx,
+      ),
+    );
+    expect(res.error).toBe("not_a_valid_slot");
+    expect(res.hint).toContain("get_available_slots");
+  });
+
+  it("book_tour с валидным временем сетки проходит проверку (дальше — календарь)", async () => {
+    // среда 11:00 Алматы = 06:00Z — валидно; календарь не настроен → следующая ошибка
+    const res = JSON.parse(
+      await executeTool(
+        "book_tour",
+        '{"slotStartIso":"2026-08-19T06:00:00.000Z","parentName":"Болатбек"}',
+        ctx,
+      ),
+    );
     expect(res.error).toBe("calendar_not_configured");
   });
 

@@ -132,7 +132,7 @@ export const DEFAULT_SETTINGS: BotSettings = {
   floodWindowMinutes: 10,
 
   // ——— Интеграции (несекретное; ключи — в Secret Manager) ———
-  wazzupChannelId: "30a457d8-af59-407d-8429-f3d75e45866c", // канал WhatsApp 77771407397
+  wazzupChannelId: "3320ad91-1f28-4096-862c-7d2d9b40459f", // канал WhatsApp 77781197733
   azureEndpoint: "https://test-ai-model-image-generator.openai.azure.com",
   azureDeployment: "gpt-5-mini",
   azureApiVersion: "2024-10-21",

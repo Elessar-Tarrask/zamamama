@@ -115,6 +115,23 @@ describe("handleWazzupWebhook", () => {
     expect(store.updateLead).not.toHaveBeenCalled();
   });
 
+  it("сообщения чужого канала кабинета полностью игнорируются", async () => {
+    vi.mocked(store.getSettings).mockResolvedValueOnce({
+      pauseOnManualReplyHours: 6,
+      replyDelaySeconds: 5,
+      replyDelayMaxSeconds: 12,
+      spamFilterEnabled: true,
+      spamMaxLinks: 3,
+      spamMaxChars: 2000,
+      spamKeywords: "",
+      wazzupChannelId: "our-channel",
+    });
+    const res = fakeRes();
+    await handleWazzupWebhook(req(inboundBody({ channelId: "foreign-channel" })), res, "t");
+    expect(store.appendMessage).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
   it("спам сохраняется в транскрипт, но задача не ставится", async () => {
     const res = fakeRes();
     await handleWazzupWebhook(

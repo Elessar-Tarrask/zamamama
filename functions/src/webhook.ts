@@ -62,6 +62,15 @@ async function handleInbound(msg: InboundMessage): Promise<void> {
   const isNew = await store.tryMarkWebhookProcessed(msg.providerMessageId);
   if (!isNew) return;
 
+  const settings = await store.getSettings();
+
+  // В кабинете Wazzup может быть несколько номеров — бот обслуживает ТОЛЬКО
+  // канал из настроек. Сообщения других каналов полностью игнорируем, иначе
+  // все номера кабинета стекаются в одного бота.
+  if (settings.wazzupChannelId && msg.channelId && msg.channelId !== settings.wazzupChannelId) {
+    return;
+  }
+
   const phone = msg.chatId;
 
   if (msg.isEcho) {
@@ -75,13 +84,11 @@ async function handleInbound(msg: InboundMessage): Promise<void> {
 
     // Настоящий ручной ответ администратора с телефона / из приложения
     // Wazzup: сохраняем в транскрипт и ставим бота на паузу.
-    const settings = await store.getSettings();
     await store.ensureConversation(phone);
     await appendManualReply(phone, msg, settings.pauseOnManualReplyHours);
     return;
   }
 
-  const settings = await store.getSettings();
   const markerMs = Date.now();
   const inboundText = truncateInbound(msg.text ?? `[${msg.type}]`);
   await store.ensureConversation(phone, msg.contactName);

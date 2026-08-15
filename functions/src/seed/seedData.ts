@@ -108,6 +108,8 @@ export const DEFAULT_SETTINGS: BotSettings = {
   adminAlertPhone: "", // WhatsApp-номер Даны, например "77011234567"
   // Пауза бота после ручного сообщения с номера садика. 0 — отключить.
   pauseOnManualReplyHours: 2,
+  // Авто-фразы, не считающиеся «администратор вошёл в чат» (по одной на строку)
+  ignoredEchoTexts: "Мы скоро ответим",
 
   // ——— Экскурсии ———
   calendarId: "", // ID календаря «Экскурсии Keystone», см. docs/SETUP.md

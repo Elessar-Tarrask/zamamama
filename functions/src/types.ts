@@ -41,6 +41,9 @@ export interface BotSettings {
   // Handoff
   adminAlertPhone: string;
   pauseOnManualReplyHours: number;
+  /** Служебные фразы (по одной на строку): такие исходящие с номера садика
+   *  (авто-приветствия WhatsApp Business и т.п.) НЕ ставят бота на паузу. */
+  ignoredEchoTexts: string;
 
   // Экскурсии
   calendarId: string;

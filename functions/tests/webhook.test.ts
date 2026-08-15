@@ -20,6 +20,7 @@ vi.mock("../src/store", () => ({
     spamMaxLinks: 3,
     spamMaxChars: 2000,
     spamKeywords: "крипт, накрутк",
+    ignoredEchoTexts: "Мы скоро ответим",
   })),
 }));
 
@@ -193,6 +194,20 @@ describe("handleWazzupWebhook", () => {
       "t",
     );
     expect(store.pauseConversation).not.toHaveBeenCalled();
+  });
+
+  it("служебная авто-фраза записывается, но НЕ ставит бота на паузу", async () => {
+    const res = fakeRes();
+    await handleWazzupWebhook(
+      req(inboundBody({ isEcho: true, text: "Здравствуйте! Спасибо, что написали. Мы скоро ответим." })),
+      res,
+      "t",
+    );
+    expect(store.appendMessage).toHaveBeenCalledWith(
+      "77011234567",
+      expect.objectContaining({ direction: "out", byBot: false }),
+    );
+    expect(store.pauseConversation).not.toHaveBeenCalled(); // бот продолжает работать
   });
 
   it("ручной ответ администратора сохраняет и ставит бота на паузу", async () => {

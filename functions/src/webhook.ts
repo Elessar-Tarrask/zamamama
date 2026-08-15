@@ -10,7 +10,23 @@ import { computeReplyDelaySeconds } from "./debounce";
 import { extractChildAge } from "./extract";
 import { looksLikeSpam, truncateInbound } from "./spam";
 import { PROCESS_QUEUE } from "./config";
-import type { ProcessPayload } from "./types";
+import type { BotSettings, ProcessPayload } from "./types";
+
+/**
+ * Служебные фразы с номера садика (авто-приветствия WhatsApp Business,
+ * автоответы) — не «администратор вошёл в чат»: записываем в транскрипт,
+ * но бота НЕ паузим. Список редактируется в панели (settings/bot).
+ */
+export function isIgnoredEchoText(text: string | undefined, settings: BotSettings): boolean {
+  if (!text) return false;
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+  const t = norm(text);
+  return (settings.ignoredEchoTexts || "")
+    .split("\n")
+    .map(norm)
+    .filter((p) => p.length >= 8) // короткие обрывки дают ложные срабатывания
+    .some((p) => t.includes(p));
+}
 
 /**
  * В эмуляторе firebase-admin требует настоящий OAuth-токен для постановки
@@ -81,6 +97,21 @@ async function handleInbound(msg: InboundMessage): Promise<void> {
     if (msg.crmMessageId && (await store.wasSentByUs(msg.crmMessageId))) return;
     if (await store.wasSentByUs(msg.providerMessageId)) return;
     if (await store.matchesRecentOwnOutbound(phone, msg.text)) return;
+
+    // Служебная авто-фраза (например, «Мы скоро ответим») — фиксируем в
+    // переписке, но бот продолжает работать.
+    if (isIgnoredEchoText(msg.text, settings)) {
+      await store.ensureConversation(phone);
+      await store.appendMessage(phone, {
+        direction: "out",
+        byBot: false,
+        type: msg.type,
+        text: msg.text ?? `[${msg.type}]`,
+        providerMessageId: msg.providerMessageId,
+        dateTimeMs: Date.now(),
+      });
+      return;
+    }
 
     // Настоящий ручной ответ администратора с телефона / из приложения
     // Wazzup: сохраняем в транскрипт и ставим бота на паузу.

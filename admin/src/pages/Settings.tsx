@@ -17,6 +17,7 @@ interface Draft {
   azureReasoningEffort: string;
   adminAlertPhone: string;
   pauseOnManualReplyHours: number;
+  ignoredEchoTexts: string;
   maxBotMessagesPerHour: number;
   maxBotMessagesPerDay: number;
   spamFilterEnabled: boolean;
@@ -49,6 +50,7 @@ const EMPTY: Draft = {
   azureReasoningEffort: "low",
   adminAlertPhone: "",
   pauseOnManualReplyHours: 2,
+  ignoredEchoTexts: "Мы скоро ответим",
   maxBotMessagesPerHour: 20,
   maxBotMessagesPerDay: 60,
   spamFilterEnabled: true,
@@ -206,6 +208,13 @@ export function Settings() {
         <Num label="Лимит ответов бота в час на диалог" value={draft.maxBotMessagesPerHour} onChange={(v) => set({ maxBotMessagesPerHour: v })} />
         <Num label="Лимит ответов бота в сутки на диалог" value={draft.maxBotMessagesPerDay} onChange={(v) => set({ maxBotMessagesPerDay: v })} />
       </div>
+      <Text
+        label="Служебные фразы, НЕ ставящие бота на паузу (по одной на строку)"
+        rows={3}
+        value={draft.ignoredEchoTexts}
+        onChange={(v) => set({ ignoredEchoTexts: v })}
+        hint="Авто-приветствия WhatsApp Business и другие автоответы с номера садика. Сообщение, содержащее такую фразу, запишется в переписку, но бот продолжит отвечать клиенту."
+      />
 
       <h2>Защита от спама</h2>
       <label className="toggle">

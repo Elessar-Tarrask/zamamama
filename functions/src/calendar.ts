@@ -163,4 +163,15 @@ export class CalendarService {
     });
     return { ok: true, eventId: event.data.id ?? "", endIso: new Date(endMs).toISOString() };
   }
+
+  /** Удаляет событие (перенос/отмена записи). Уже удалённое — не ошибка. */
+  async cancelEvent(eventId: string): Promise<void> {
+    if (!eventId) return;
+    try {
+      await this.cal.events.delete({ calendarId: this.settings.calendarId, eventId });
+    } catch (e) {
+      const code = (e as { code?: number }).code;
+      if (code !== 404 && code !== 410) throw e;
+    }
+  }
 }

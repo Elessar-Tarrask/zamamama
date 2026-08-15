@@ -11,7 +11,8 @@ vi.mock("../src/store", () => ({
   recordSentMessage: vi.fn(async () => {}),
   updateLead: vi.fn(async () => {}),
   createBooking: vi.fn(async () => {}),
-  hasBooking: vi.fn(async () => false),
+  findActiveBooking: vi.fn(async () => null),
+  updateBookingStatus: vi.fn(async () => {}),
 }));
 
 vi.mock("firebase-functions", () => ({
@@ -114,6 +115,68 @@ describe("save_lead_info / прочее", () => {
       ),
     );
     expect(res.error).toBe("calendar_not_configured");
+  });
+});
+
+describe("одна запись на чат (перенос вместо дублей)", () => {
+  const fakeCalendar = {
+    bookSlot: vi.fn(async () => ({ ok: true as const, eventId: "new-event", endIso: "2026-08-19T07:00:00.000Z" })),
+    cancelEvent: vi.fn(async () => {}),
+  };
+  const calCtx: ToolContext = { ...ctx, calendar: fakeCalendar as unknown as ToolContext["calendar"] };
+
+  it("новое время переносит существующую запись: старое событие удаляется", async () => {
+    vi.mocked(store.findActiveBooking).mockResolvedValueOnce({
+      id: "b1",
+      slotStartIso: "2026-08-19T05:00:00.000Z", // была среда 10:00
+      calendarEventId: "old-event",
+    });
+    const res = JSON.parse(
+      await executeTool(
+        "book_tour",
+        '{"slotStartIso":"2026-08-19T06:00:00.000Z","parentName":"Болатбек"}', // теперь 11:00
+        calCtx,
+      ),
+    );
+    expect(fakeCalendar.cancelEvent).toHaveBeenCalledWith("old-event");
+    expect(store.updateBookingStatus).toHaveBeenCalledWith("b1", "rescheduled");
+    expect(store.createBooking).toHaveBeenCalled();
+    expect(res.ok).toBe(true);
+    expect(res.bookedLabel).toContain("11:00");
+    expect(res.rescheduledFrom).toContain("10:00");
+  });
+
+  it("то же самое время повторно — уже записан, ничего не пересоздаём", async () => {
+    vi.mocked(store.findActiveBooking).mockResolvedValueOnce({
+      id: "b1",
+      slotStartIso: "2026-08-19T06:00:00.000Z",
+      calendarEventId: "old-event",
+    });
+    const res = JSON.parse(
+      await executeTool(
+        "book_tour",
+        '{"slotStartIso":"2026-08-19T06:00:00.000Z","parentName":"Болатбек"}',
+        calCtx,
+      ),
+    );
+    expect(res.ok).toBe(true);
+    expect(res.alreadyBooked).toBe(true);
+    expect(fakeCalendar.bookSlot).not.toHaveBeenCalled();
+    expect(fakeCalendar.cancelEvent).not.toHaveBeenCalled();
+  });
+
+  it("реально занятый слот — честная ошибка, запись НЕ создаётся", async () => {
+    fakeCalendar.bookSlot.mockResolvedValueOnce({ ok: false, reason: "slot_already_taken" } as never);
+    const res = JSON.parse(
+      await executeTool(
+        "book_tour",
+        '{"slotStartIso":"2026-08-19T06:00:00.000Z","parentName":"Болатбек"}',
+        calCtx,
+      ),
+    );
+    expect(res.error).toBe("slot_already_taken");
+    expect(res.hint).toContain("НЕ создана");
+    expect(store.createBooking).not.toHaveBeenCalled();
   });
 
   it("неизвестный инструмент — ошибка", async () => {

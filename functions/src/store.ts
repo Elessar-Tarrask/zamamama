@@ -173,22 +173,37 @@ export interface BookingRecord {
   slotStartIso: string;
   slotEndIso: string;
   calendarEventId: string;
-  status: "confirmed";
+  status: "confirmed" | "rescheduled" | "cancelled";
+}
+
+export interface ActiveBooking {
+  id: string;
+  slotStartIso: string;
+  calendarEventId: string;
 }
 
 export async function createBooking(booking: BookingRecord): Promise<void> {
   await db().collection("bookings").add({ ...booking, createdAtMs: Date.now() });
 }
 
-/** Есть ли уже бронь этого клиента на это время (идемпотентность book_tour). */
-export async function hasBooking(phone: string, slotStartIso: string): Promise<boolean> {
+/** Активная (confirmed) запись клиента — у одного чата она максимум одна. */
+export async function findActiveBooking(phone: string): Promise<ActiveBooking | null> {
   const snap = await db()
     .collection("bookings")
     .where("phone", "==", phone)
-    .where("slotStartIso", "==", slotStartIso)
-    .limit(1)
+    .where("status", "==", "confirmed")
+    .limit(5)
     .get();
-  return !snap.empty;
+  if (snap.empty) return null;
+  const docs = snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as BookingRecord & { createdAtMs?: number }) }))
+    .sort((a, b) => (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0));
+  const latest = docs[0];
+  return { id: latest.id, slotStartIso: latest.slotStartIso, calendarEventId: latest.calendarEventId };
+}
+
+export async function updateBookingStatus(id: string, status: BookingRecord["status"]): Promise<void> {
+  await db().collection("bookings").doc(id).update({ status });
 }
 
 export { FieldValue };
